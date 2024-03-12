@@ -11,7 +11,15 @@ pub fn new_test() {
   map.size(a)
   |> should.equal(0)
   map.is_empty(a)
-  |> should.equal(True)
+  |> should.be_true()
+}
+
+pub fn new_with_size_test() {
+  let a = map.new_with_size(5)
+  map.size(a)
+  |> should.equal(0)
+  map.is_empty(a)
+  |> should.be_true()
 }
 
 pub fn put_test() {

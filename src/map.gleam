@@ -2,6 +2,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/list
 import gleam/int
 import gleam/float
+import gleam/string
 import hash
 
 const default_size = 11
@@ -25,8 +26,8 @@ pub fn new_with_size_and_load(size: Int, load: Float) -> Map(value) {
   Map(list.repeat(None, size), size, load)
 }
 
-pub fn clear(_previous_map: Map(value)) -> Map(value) {
-  new()
+pub fn clear(previous_map: Map(value)) -> Map(value) {
+  new_with_size_and_load(previous_map.size, previous_map.load)
 }
 
 pub fn is_empty(map: Map(value)) -> Bool {
@@ -73,15 +74,31 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
         }
         False -> {
           let map = check_capacity(map)
-          let new_len = list.length(map.inner)
           let hash = calc_hash(map, key)
-          let gap = find_gap(map, key, { hash + 1 } % new_len, hash)
+          let gap = find_gap(map, key, { hash + 1 } % map.size, hash)
 
-          Map(insert_at(map.inner, gap, key, value), new_len, map.load)
+          Map(insert_at(map.inner, gap, key, value), map.size, map.load)
         }
       }
     }
   }
+}
+
+pub fn to_string(
+  map: Map(value),
+  value_to_string: fn(value) -> String,
+) -> String {
+  "{"
+  <> string.join(
+    list.filter_map(map.inner, fn(opt) {
+      case opt {
+        None -> Error(opt)
+        Some(e) -> Ok("\"" <> e.key <> "\"" <> ":" <> value_to_string(e.value))
+      }
+    }),
+    with: ",",
+  )
+  <> "}"
 }
 
 fn insert_at(
