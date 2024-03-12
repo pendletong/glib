@@ -1,10 +1,18 @@
 import gleam/option.{type Option, None, Some}
-import gleam/list
+import gleam/list.{Continue, Stop}
 import gleam/int
 import gleam/io
+import gleam/float
 import hash
 
 const default_size = 11
+
+const default_load = 0.75
+
+pub type MapError {
+  NoSpaceError
+  RehashError
+}
 
 pub opaque type Map(value) {
   Map(inner: List(Option(Entry(value))))
@@ -45,33 +53,56 @@ fn get_size(list: List(Option(Entry(value))), accumulator: Int) -> Int {
   }
 }
 
-pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
+pub fn put(
+  map: Map(value),
+  key: String,
+  value: value,
+) -> Result(Map(value), MapError) {
   let entry = Entry(key, value)
   let hash = hash(map, key)
   let current_length = list.length(map.inner)
-  let gap = find_gap(map, { hash + 1 } % current_length, hash)
 
-  io.println(
-    "Outputting "
-    <> key
-    <> " to hash "
-    <> int.to_string(hash)
-    <> " gap "
-    <> int.to_string(gap),
-  )
-  let map = case gap {
-    -1 -> rehash(map, current_length * 2 + 1)
-    _ -> map
+  let map = {
+    let size = size(map)
+    case
+      {
+        int.to_float(current_length)
+        |> float.multiply(default_load)
+        |> float.round()
+      }
+    {
+      l if size > l -> rehash(map, current_length * 2 + 1)
+      _ -> Ok(map)
+    }
   }
 
-  Map(
-    list.map_fold(map.inner, 0, fn(i, e) {
-      case i {
-        i if i == gap -> #(i + 1, Some(entry))
-        _ -> #(i + 1, e)
+  case map {
+    Error(x) -> Error(x)
+    Ok(map) -> {
+      let gap = find_gap(map, { hash + 1 } % current_length, hash)
+      io.println(
+        "Outputting "
+        <> key
+        <> " to hash "
+        <> int.to_string(hash)
+        <> " gap "
+        <> int.to_string(gap),
+      )
+
+      case gap {
+        -1 -> Error(NoSpaceError)
+        _ ->
+          Ok(Map(
+            list.map_fold(map.inner, 0, fn(i, e) {
+              case i {
+                i if i == gap -> #(i + 1, Some(entry))
+                _ -> #(i + 1, e)
+              }
+            }).1,
+          ))
       }
-    }).1,
-  )
+    }
+  }
 }
 
 fn find_gap(map: Map(value), orig_position: Int, position: Int) -> Int {
@@ -80,8 +111,7 @@ fn find_gap(map: Map(value), orig_position: Int, position: Int) -> Int {
     Ok(Some(_e)) -> {
       case position {
         position if position == orig_position -> -1
-        position if position == 0 ->
-          find_gap(map, orig_position, list.length(map.inner) - 1)
+        0 -> find_gap(map, orig_position, list.length(map.inner) - 1)
         position -> find_gap(map, orig_position, position - 1)
       }
     }
@@ -89,11 +119,17 @@ fn find_gap(map: Map(value), orig_position: Int, position: Int) -> Int {
   }
 }
 
-fn rehash(map: Map(value), new_size: Int) -> Map(value) {
-  list.fold(map.inner, new_with_size(new_size), fn(new_map, el) {
+fn rehash(map: Map(value), new_size: Int) -> Result(Map(value), MapError) {
+  list.fold_until(map.inner, Ok(new_with_size(new_size)), fn(new_map, el) {
     case el {
-      Some(entry) -> put(new_map, entry.key, entry.value)
-      None -> new_map
+      Some(entry) ->
+        Stop({
+          case new_map {
+            Ok(m) -> put(m, entry.key, entry.value)
+            _ -> Error(RehashError)
+          }
+        })
+      None -> Continue(new_map)
     }
   })
 }
