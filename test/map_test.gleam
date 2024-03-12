@@ -16,13 +16,9 @@ pub fn new_test() {
 
 pub fn put_test() {
   let a = map.new()
-  case map.put(a, "key", 123) {
-    Ok(m) -> {
-      map.size(m)
-      |> should.equal(1)
-      map.is_empty(m)
-      |> should.equal(False)
-    }
-    Error(_) -> should.fail()
-  }
+  let new_map = map.put(a, "key", 123)
+  map.size(new_map)
+  |> should.equal(1)
+  map.is_empty(new_map)
+  |> should.equal(False)
 }

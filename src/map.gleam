@@ -1,7 +1,6 @@
 import gleam/option.{type Option, None, Some}
-import gleam/list.{Continue, Stop}
+import gleam/list
 import gleam/int
-import gleam/io
 import gleam/float
 import hash
 
@@ -9,23 +8,21 @@ const default_size = 11
 
 const default_load = 0.75
 
-pub type MapError {
-  NoSpaceError
-  RehashError
-}
-
 pub opaque type Map(value) {
-  Map(inner: List(Option(Entry(value))))
+  Map(inner: List(Option(Entry(value))), size: Int, load: Float)
 }
 
 pub fn new() -> Map(value) {
   new_with_size(default_size)
 }
 
-pub fn new_with_size(size: Int) -> Map(vale) {
+pub fn new_with_size(size: Int) -> Map(value) {
   //    glimt.info(log, "Creating Map of size "<>int.to_string(size))
-  io.println("Creating Map of size " <> int.to_string(size))
-  Map(list.repeat(None, size))
+  new_with_size_and_load(size, default_load)
+}
+
+pub fn new_with_size_and_load(size: Int, load: Float) -> Map(value) {
+  Map(list.repeat(None, size), size, load)
 }
 
 pub fn clear(_previous_map: Map(value)) -> Map(value) {
@@ -53,89 +50,107 @@ fn get_size(list: List(Option(Entry(value))), accumulator: Int) -> Int {
   }
 }
 
-pub fn put(
-  map: Map(value),
-  key: String,
-  value: value,
-) -> Result(Map(value), MapError) {
-  let hash = hash(map, key)
-  let current_length = list.length(map.inner)
+pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
+  let hash = calc_hash(map, key)
 
-  let map = check_capacity(map, current_length)
+  let assert Ok(entry) = list.at(map.inner, hash)
 
-  case map {
-    Error(_) -> map
-    Ok(map) -> {
-      let gap = find_gap(map, { hash + 1 } % current_length, hash)
-      io.println(
-        "Outputting "
-        <> key
-        <> " to hash "
-        <> int.to_string(hash)
-        <> " gap "
-        <> int.to_string(gap),
+  case entry {
+    None ->
+      Map(
+        insert_at(map.inner, hash, key, value),
+        list.length(map.inner),
+        map.load,
       )
+    Some(e) -> {
+      case e.key == key {
+        True -> {
+          Map(
+            insert_at(map.inner, hash, key, value),
+            list.length(map.inner),
+            map.load,
+          )
+        }
+        False -> {
+          let map = check_capacity(map)
+          let new_len = list.length(map.inner)
+          let hash = calc_hash(map, key)
+          let gap = find_gap(map, key, { hash + 1 } % new_len, hash)
 
-      case gap {
-        -1 -> Error(NoSpaceError)
-        _ ->
-          Ok(Map(
-            list.map_fold(map.inner, 0, fn(i, e) {
-              case i {
-                i if i == gap -> #(i + 1, Some(Entry(key, value)))
-                i -> #(i + 1, e)
-              }
-            }).1,
-          ))
+          Map(insert_at(map.inner, gap, key, value), new_len, map.load)
+        }
       }
     }
   }
 }
 
-fn check_capacity(map: Map(value), length: Int) -> Result(Map(value), MapError) {
+fn insert_at(
+  map_list: List(Option(Entry(value))),
+  at: Int,
+  key: String,
+  value: value,
+) -> List(Option(Entry(value))) {
+  list.map_fold(map_list, 0, fn(i, e) {
+    case i {
+      i if i == at -> #(i + 1, Some(Entry(key, value)))
+      i -> #(i + 1, e)
+    }
+  }).1
+}
+
+fn check_capacity(map: Map(value)) -> Map(value) {
   let size = size(map)
+  let length = list.length(map.inner)
+
   case
     {
       int.to_float(length)
-      |> float.multiply(default_load)
+      |> float.multiply(map.load)
       |> float.round()
     }
   {
-    l if size > l -> rehash(map, length * 2 + 1)
-    _ -> Ok(map)
+    l if size >= l -> {
+      rehash(map, length * 2 + 1)
+    }
+    _ -> map
   }
 }
 
-fn find_gap(map: Map(value), last_position: Int, position: Int) -> Int {
-  case list.at(map.inner, position) {
-    Ok(None) -> position
-    Ok(Some(_e)) -> {
-      case position {
-        position if position == last_position -> -1
-        0 -> find_gap(map, last_position, list.length(map.inner) - 1)
-        position -> find_gap(map, last_position, position - 1)
+fn find_gap(
+  map: Map(value),
+  key: String,
+  last_position: Int,
+  position: Int,
+) -> Int {
+  let assert Ok(entry) = list.at(map.inner, position)
+
+  case entry {
+    None -> position
+    Some(e) -> {
+      case e.key == key {
+        True -> position
+        False -> {
+          case position {
+            position if position == last_position -> -1
+            0 -> find_gap(map, key, last_position, list.length(map.inner) - 1)
+            position -> find_gap(map, key, last_position, position - 1)
+          }
+        }
       }
     }
-    _ -> -1
   }
 }
 
-fn rehash(map: Map(value), new_size: Int) -> Result(Map(value), MapError) {
-  list.fold_until(map.inner, Ok(new_with_size(new_size)), fn(new_map, el) {
+fn rehash(map: Map(value), new_size: Int) -> Map(value) {
+  list.fold(map.inner, new_with_size(new_size), fn(new_map, el) {
     case el {
-      Some(entry) ->
-        Stop({
-          case new_map {
-            Ok(m) -> put(m, entry.key, entry.value)
-            _ -> Error(RehashError)
-          }
-        })
-      None -> Continue(new_map)
+      Some(entry) -> put(new_map, entry.key, entry.value)
+      None -> new_map
     }
   })
 }
 
-fn hash(map: Map(value), key: String) -> Int {
+fn calc_hash(map: Map(value), key: String) -> Int {
   hash.hash(key) % list.length(map.inner)
   |> int.absolute_value()
 }
