@@ -1,9 +1,10 @@
 import gleam/option.{type Option, None, Some}
 import gleam/list
 import gleam/int
+import gleam/io
 import hash
 
-const default_size = 16
+const default_size = 11
 
 pub opaque type Map(value) {
   Map(inner: List(Option(Entry(value))))
@@ -14,6 +15,8 @@ pub fn new() -> Map(value) {
 }
 
 pub fn new_with_size(size: Int) -> Map(vale) {
+  //    glimt.info(log, "Creating Map of size "<>int.to_string(size))
+  io.println("Creating Map of size " <> int.to_string(size))
   Map(list.repeat(None, size))
 }
 
@@ -43,11 +46,32 @@ fn get_size(list: List(Option(Entry(value))), accumulator: Int) -> Int {
 }
 
 pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
-  todo
   let entry = Entry(key, value)
   let hash = hash(map, key)
+  let current_length = list.length(map.inner)
+  let gap = find_gap(map, { hash + 1 } % current_length, hash)
 
-  map
+  io.println(
+    "Outputting "
+    <> key
+    <> " to hash "
+    <> int.to_string(hash)
+    <> " gap "
+    <> int.to_string(gap),
+  )
+  let map = case gap {
+    -1 -> rehash(map, current_length * 2 + 1)
+    _ -> map
+  }
+
+  Map(
+    list.map_fold(map.inner, 0, fn(i, e) {
+      case i {
+        i if i == gap -> #(i + 1, Some(entry))
+        _ -> #(i + 1, e)
+      }
+    }).1,
+  )
 }
 
 fn find_gap(map: Map(value), orig_position: Int, position: Int) -> Int {
