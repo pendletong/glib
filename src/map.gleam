@@ -58,26 +58,13 @@ pub fn put(
   key: String,
   value: value,
 ) -> Result(Map(value), MapError) {
-  let entry = Entry(key, value)
   let hash = hash(map, key)
   let current_length = list.length(map.inner)
 
-  let map = {
-    let size = size(map)
-    case
-      {
-        int.to_float(current_length)
-        |> float.multiply(default_load)
-        |> float.round()
-      }
-    {
-      l if size > l -> rehash(map, current_length * 2 + 1)
-      _ -> Ok(map)
-    }
-  }
+  let map = check_capacity(map, current_length)
 
   case map {
-    Error(x) -> Error(x)
+    Error(_) -> map
     Ok(map) -> {
       let gap = find_gap(map, { hash + 1 } % current_length, hash)
       io.println(
@@ -95,8 +82,8 @@ pub fn put(
           Ok(Map(
             list.map_fold(map.inner, 0, fn(i, e) {
               case i {
-                i if i == gap -> #(i + 1, Some(entry))
-                _ -> #(i + 1, e)
+                i if i == gap -> #(i + 1, Some(Entry(key, value)))
+                i -> #(i + 1, e)
               }
             }).1,
           ))
@@ -105,14 +92,28 @@ pub fn put(
   }
 }
 
-fn find_gap(map: Map(value), orig_position: Int, position: Int) -> Int {
+fn check_capacity(map: Map(value), length: Int) -> Result(Map(value), MapError) {
+  let size = size(map)
+  case
+    {
+      int.to_float(length)
+      |> float.multiply(default_load)
+      |> float.round()
+    }
+  {
+    l if size > l -> rehash(map, length * 2 + 1)
+    _ -> Ok(map)
+  }
+}
+
+fn find_gap(map: Map(value), last_position: Int, position: Int) -> Int {
   case list.at(map.inner, position) {
     Ok(None) -> position
     Ok(Some(_e)) -> {
       case position {
-        position if position == orig_position -> -1
-        0 -> find_gap(map, orig_position, list.length(map.inner) - 1)
-        position -> find_gap(map, orig_position, position - 1)
+        position if position == last_position -> -1
+        0 -> find_gap(map, last_position, list.length(map.inner) - 1)
+        position -> find_gap(map, last_position, position - 1)
       }
     }
     _ -> -1
