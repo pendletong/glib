@@ -3,6 +3,7 @@ import gleam/list
 import gleam/int
 import gleam/float
 import gleam/string
+import gleam/result
 import hash
 
 const default_size = 11
@@ -38,23 +39,10 @@ pub fn size(map: Map(value)) -> Int {
   get_size(map.inner, 0)
 }
 
-fn get_size(list: List(Option(Entry(value))), accumulator: Int) -> Int {
-  case list {
-    [] -> accumulator
-    [first, ..rest] -> {
-      let inc = case first {
-        None -> 0
-        Some(_a) -> 1
-      }
-      get_size(rest, inc + accumulator)
-    }
-  }
-}
-
 pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
   let hash = calc_hash(map, key)
 
-  let assert Ok(entry) = list.at(map.inner, hash)
+  let entry = result.unwrap(list.at(map.inner, hash), None)
 
   case entry {
     None ->
@@ -84,6 +72,24 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
   }
 }
 
+pub fn get(map: Map(value), key: String) -> Option(value) {
+  let hash = calc_hash(map, key)
+
+  let entry = result.unwrap(list.at(map.inner, hash), None)
+
+  case entry {
+    None -> None
+    Some(e) -> {
+      case e.key == key {
+        True -> Some(e.value)
+        False -> {
+          find_key(map, key, { hash + 1 } % map.size, hash)
+        }
+      }
+    }
+  }
+}
+
 pub fn to_string(
   map: Map(value),
   value_to_string: fn(value) -> String,
@@ -99,6 +105,19 @@ pub fn to_string(
     with: ",",
   )
   <> "}"
+}
+
+fn get_size(list: List(Option(Entry(value))), accumulator: Int) -> Int {
+  case list {
+    [] -> accumulator
+    [first, ..rest] -> {
+      let inc = case first {
+        None -> 0
+        _ -> 1
+      }
+      get_size(rest, inc + accumulator)
+    }
+  }
 }
 
 fn insert_at(
@@ -120,13 +139,14 @@ fn check_capacity(map: Map(value)) -> Map(value) {
   let length = list.length(map.inner)
 
   case
-    {
+    size
+    >= {
       int.to_float(length)
       |> float.multiply(map.load)
       |> float.round()
     }
   {
-    l if size >= l -> {
+    True -> {
       rehash(map, length * 2 + 1)
     }
     _ -> map
@@ -139,7 +159,7 @@ fn find_gap(
   last_position: Int,
   position: Int,
 ) -> Int {
-  let assert Ok(entry) = list.at(map.inner, position)
+  let entry = result.unwrap(list.at(map.inner, position), None)
 
   case entry {
     None -> position
@@ -158,6 +178,31 @@ fn find_gap(
   }
 }
 
+fn find_key(
+  map: Map(value),
+  key: String,
+  last_position: Int,
+  position: Int,
+) -> Option(value) {
+  let entry = result.unwrap(list.at(map.inner, position), None)
+
+  case entry {
+    None -> None
+    Some(e) -> {
+      case e.key == key {
+        True -> Some(e.value)
+        False -> {
+          case position {
+            position if position == last_position -> None
+            0 -> find_key(map, key, last_position, list.length(map.inner) - 1)
+            position -> find_key(map, key, last_position, position - 1)
+          }
+        }
+      }
+    }
+  }
+}
+
 fn rehash(map: Map(value), new_size: Int) -> Map(value) {
   list.fold(map.inner, new_with_size(new_size), fn(new_map, el) {
     case el {
@@ -167,7 +212,7 @@ fn rehash(map: Map(value), new_size: Int) -> Map(value) {
   })
 }
 
-fn calc_hash(map: Map(value), key: String) -> Int {
+pub fn calc_hash(map: Map(value), key: String) -> Int {
   hash.hash(key) % list.length(map.inner)
   |> int.absolute_value()
 }

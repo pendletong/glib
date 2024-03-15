@@ -21,7 +21,8 @@ pub fn main() {
   let a = map.put(a, "keygpo", 123)
   let a = map.put(a, "keygpo", 123)
   io.println(map.to_string(a, fn(v) { int.to_string(v) }))
-  map.size(a)
+  io.debug(map.size(a))
 
-  map.is_empty(a)
+  io.debug(map.is_empty(a))
+  io.debug(map.get(a, "keygpo"))
 }
