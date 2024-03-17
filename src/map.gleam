@@ -90,6 +90,33 @@ pub fn get(map: Map(value), key: String) -> Option(value) {
   }
 }
 
+pub fn keys(map: Map(value)) -> List(String) {
+  list.filter_map(map.inner, fn(e: Option(Entry(value))) {
+    case e {
+      None -> Error(Nil)
+      Some(en) -> Ok(en.key)
+    }
+  })
+}
+
+pub fn values(map: Map(value)) -> List(value) {
+  list.filter_map(map.inner, fn(e: Option(Entry(value))) {
+    case e {
+      None -> Error(Nil)
+      Some(en) -> Ok(en.value)
+    }
+  })
+}
+
+pub fn entries(map: Map(value)) -> List(#(String, value)) {
+  list.filter_map(map.inner, fn(e: Option(Entry(value))) {
+    case e {
+      None -> Error(Nil)
+      Some(en) -> Ok(#(en.key, en.value))
+    }
+  })
+}
+
 pub fn to_string(
   map: Map(value),
   value_to_string: fn(value) -> String,

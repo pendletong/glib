@@ -25,4 +25,7 @@ pub fn main() {
 
   io.debug(map.is_empty(a))
   io.debug(map.get(a, "keygpo"))
+  io.debug(map.keys(a))
+  io.debug(map.values(a))
+  io.debug(map.entries(a))
 }
