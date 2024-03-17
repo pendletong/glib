@@ -177,12 +177,12 @@ fn insert_at(
   key: String,
   value: value,
 ) -> List(Option(Entry(value))) {
-  list.map_fold(map_list, 0, fn(i, e) {
-    case i {
-      i if i == at -> #(i + 1, Some(Entry(key, value)))
-      i -> #(i + 1, e)
-    }
-  }).1
+  let split_list = list.split(map_list, at)
+  list.concat([
+    split_list.0,
+    [Some(Entry(key, value))],
+    result.unwrap(list.rest(split_list.1), []),
+  ])
 }
 
 fn check_capacity(map: Map(value)) -> Map(value) {
@@ -200,6 +200,20 @@ fn check_capacity(map: Map(value)) -> Map(value) {
     _ -> map
   }
 }
+
+// fn find(map: Map(value), key: String, position: Int) -> #(Int, Bool)
+// {
+//   let search_list = list.split(map.inner, position)
+
+//   let found = list.find(list.concat([search_list.1, search_list.0]), fn(entry: Option(Entry(value))) {
+//     case entry {
+//       None -> True
+//       Some(Entry(key, _)) -> True
+//       _ -> False
+//     }
+//   })
+
+// }
 
 fn find_gap(
   map: Map(value),

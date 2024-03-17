@@ -5,6 +5,7 @@ import gleamy/bench
 import gleam/list
 import gleam/iterator
 import gleam/dict
+import gleam/result
 
 pub fn main() {
   io.println("Hello from glib!")
@@ -34,9 +35,47 @@ pub fn main() {
   io.debug(map.entries(a))
   io.debug(map.contains_key(a, "keygpo"))
   io.debug(map.contains_key(a, "keygpozzz"))
-
   map_bench()
   dict_bench()
+  // let l = list.range(1, 50)
+  // let s = list.split(l, 1)
+  // io.debug(list.concat([s.1, s.0]))
+  // bench.run(
+  //   [bench.Input("reversed list", list.range(1, 1000))],
+  //   [bench.Function("list.sort()", split_join)],
+  //   [bench.Duration(1000), bench.Warmup(100)],
+  // )
+  // |> bench.table([bench.IPS, bench.Min, bench.P(99)])
+  // |> io.println()
+
+  // bench.run(
+  //   [bench.Input("reversed list", list.range(1, 1000))],
+  //   [bench.Function("list.sort()", insert_at)],
+  //   [bench.Duration(1000), bench.Warmup(100)],
+  // )
+  // |> bench.table([bench.IPS, bench.Min, bench.P(99)])
+  // |> io.println()
+}
+
+fn find_600(l: List(Int), i) {
+  case result.unwrap(list.at(l, i), 600) {
+    600 -> True
+    _ -> find_600(l, i + 1)
+  }
+}
+
+fn split_join(l: List(Int)) {
+  let l2 = list.split(l, 500)
+  let _l3 = list.concat([l2.0, [999], result.unwrap(list.rest(l2.1), [])])
+}
+
+fn insert_at(l: List(Int)) {
+  list.map_fold(l, 0, fn(i, e) {
+    case i == 500 {
+      True -> #(i + 1, 999)
+      False -> #(i + 1, e)
+    }
+  })
 }
 
 fn map_bench() {
