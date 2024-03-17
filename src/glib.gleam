@@ -1,6 +1,10 @@
 import gleam/io
 import gleam/int
 import map
+import gleamy/bench
+import gleam/list
+import gleam/iterator
+import gleam/dict
 
 pub fn main() {
   io.println("Hello from glib!")
@@ -28,4 +32,79 @@ pub fn main() {
   io.debug(map.keys(a))
   io.debug(map.values(a))
   io.debug(map.entries(a))
+  io.debug(map.contains_key(a, "keygpo"))
+  io.debug(map.contains_key(a, "keygpozzz"))
+
+  map_bench()
+  dict_bench()
+}
+
+fn map_bench() {
+  let inputs = [bench.Input("simple test", #("First", "Entry"))]
+
+  let map_test = fn(test_map: map.Map(value), entry: #(String, value)) {
+    map.put(test_map, entry.0, entry.1)
+  }
+
+  let init_sizes = [0, 5, 10, 15, 18, 50, 100, 1000]
+  let tests =
+    list.map(init_sizes, fn(size) {
+      bench.Function("Map size " <> int.to_string(size), map_test(
+        {
+          case size {
+            0 -> map.new()
+            _ -> {
+              iterator.range(1, size)
+              |> iterator.to_list
+              |> list.fold(map.new(), fn(new_map, i) {
+                map.put(
+                  new_map,
+                  "key" <> int.to_string(i),
+                  "value" <> int.to_string(i),
+                )
+              })
+            }
+          }
+        },
+        _,
+      ))
+    })
+  bench.run(inputs, tests, [bench.Warmup(100), bench.Duration(1000)])
+  |> bench.table([bench.IPS, bench.Min, bench.P(99)])
+  |> io.println
+}
+
+fn dict_bench() {
+  let inputs = [bench.Input("simple test", #("First", "Entry"))]
+
+  let map_test = fn(test_map: dict.Dict(String, value), entry: #(String, value)) {
+    dict.insert(test_map, entry.0, entry.1)
+  }
+
+  let init_sizes = [0, 5, 10, 15, 18, 50, 100, 1000]
+  let tests =
+    list.map(init_sizes, fn(size) {
+      bench.Function("Map size " <> int.to_string(size), map_test(
+        {
+          case size {
+            0 -> dict.new()
+            _ -> {
+              iterator.range(1, size)
+              |> iterator.to_list
+              |> list.fold(dict.new(), fn(new_map, i) {
+                dict.insert(
+                  new_map,
+                  "key" <> int.to_string(i),
+                  "value" <> int.to_string(i),
+                )
+              })
+            }
+          }
+        },
+        _,
+      ))
+    })
+  bench.run(inputs, tests, [bench.Warmup(100), bench.Duration(1000)])
+  |> bench.table([bench.IPS, bench.Min, bench.P(99)])
+  |> io.println
 }
