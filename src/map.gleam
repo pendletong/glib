@@ -11,7 +11,12 @@ const default_size = 11
 const default_load = 0.75
 
 pub opaque type Map(value) {
-  Map(inner: List(Option(Entry(value))), size: Int, load: Float)
+  Map(
+    inner: List(Option(Entry(value))),
+    size: Int,
+    load: Float,
+    num_entries: Int,
+  )
 }
 
 pub fn new() -> Map(value) {
@@ -24,7 +29,7 @@ pub fn new_with_size(size: Int) -> Map(value) {
 }
 
 pub fn new_with_size_and_load(size: Int, load: Float) -> Map(value) {
-  Map(list.repeat(None, size), size, load)
+  Map(list.repeat(None, size), size, load, 0)
 }
 
 pub fn clear(previous_map: Map(value)) -> Map(value) {
@@ -36,36 +41,47 @@ pub fn is_empty(map: Map(value)) -> Bool {
 }
 
 pub fn size(map: Map(value)) -> Int {
-  get_size(map.inner, 0)
+  map.num_entries
 }
 
 pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
   let hash = calc_hash(map, key)
 
-  let entry = result.unwrap(list.at(map.inner, hash), None)
+  let entry = result.unwrap(list.at(map.inner, hash.0), None)
 
   case entry {
     None ->
       Map(
-        insert_at(map.inner, hash, key, value),
-        list.length(map.inner),
+        insert_at(map.inner, hash.0, key, value),
+        map.size,
         map.load,
+        map.num_entries + 1,
       )
     Some(e) -> {
       case e.key == key {
         True -> {
           Map(
-            insert_at(map.inner, hash, key, value),
-            list.length(map.inner),
+            insert_at(map.inner, hash.0, key, value),
+            map.size,
             map.load,
+            map.num_entries,
           )
         }
         False -> {
           let map = check_capacity(map)
-          let hash = calc_hash(map, key)
-          let gap = find_gap(map, key, { hash + 1 } % map.size, hash)
-
-          Map(insert_at(map.inner, gap, key, value), map.size, map.load)
+          let new_hash = fix_hash(map, hash.1)
+          let new_pos =
+            find_gap(map, key, { new_hash + 1 } % map.size, new_hash)
+          let new_size = case new_pos {
+            #(_, True) -> map.num_entries + 1
+            #(_, False) -> map.num_entries
+          }
+          Map(
+            insert_at(map.inner, new_pos.0, key, value),
+            map.size,
+            map.load,
+            new_size,
+          )
         }
       }
     }
@@ -75,7 +91,7 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
 pub fn get(map: Map(value), key: String) -> Option(value) {
   let hash = calc_hash(map, key)
 
-  let entry = result.unwrap(list.at(map.inner, hash), None)
+  let entry = result.unwrap(list.at(map.inner, hash.0), None)
 
   case entry {
     None -> None
@@ -83,7 +99,28 @@ pub fn get(map: Map(value), key: String) -> Option(value) {
       case e.key == key {
         True -> Some(e.value)
         False -> {
-          find_key(map, key, { hash + 1 } % map.size, hash)
+          find_key(map, key, { hash.0 + 1 } % map.size, hash.0, ret_value)
+        }
+      }
+    }
+  }
+}
+
+pub fn contains_key(map: Map(value), key: String) -> Bool {
+  let hash = calc_hash(map, key)
+
+  let entry = result.unwrap(list.at(map.inner, hash.0), None)
+
+  case entry {
+    None -> False
+    Some(e) -> {
+      case e.key == key {
+        True -> True
+        False -> {
+          option.unwrap(
+            find_key(map, key, { hash.0 + 1 } % map.size, hash.0, ret_exists),
+            False,
+          )
         }
       }
     }
@@ -134,19 +171,6 @@ pub fn to_string(
   <> "}"
 }
 
-fn get_size(list: List(Option(Entry(value))), accumulator: Int) -> Int {
-  case list {
-    [] -> accumulator
-    [first, ..rest] -> {
-      let inc = case first {
-        None -> 0
-        _ -> 1
-      }
-      get_size(rest, inc + accumulator)
-    }
-  }
-}
-
 fn insert_at(
   map_list: List(Option(Entry(value))),
   at: Int,
@@ -162,19 +186,16 @@ fn insert_at(
 }
 
 fn check_capacity(map: Map(value)) -> Map(value) {
-  let size = size(map)
-  let length = list.length(map.inner)
-
   case
-    size
+    map.num_entries
     >= {
-      int.to_float(length)
+      int.to_float(map.size)
       |> float.multiply(map.load)
       |> float.round()
     }
   {
     True -> {
-      rehash(map, length * 2 + 1)
+      rehash(map, map.size * 2 + 1)
     }
     _ -> map
   }
@@ -185,18 +206,18 @@ fn find_gap(
   key: String,
   last_position: Int,
   position: Int,
-) -> Int {
+) -> #(Int, Bool) {
   let entry = result.unwrap(list.at(map.inner, position), None)
 
   case entry {
-    None -> position
+    None -> #(position, False)
     Some(e) -> {
       case e.key == key {
-        True -> position
+        True -> #(position, True)
         False -> {
           case position {
-            position if position == last_position -> -1
-            0 -> find_gap(map, key, last_position, list.length(map.inner) - 1)
+            position if position == last_position -> #(-1, False)
+            0 -> find_gap(map, key, last_position, map.size - 1)
             position -> find_gap(map, key, last_position, position - 1)
           }
         }
@@ -210,19 +231,20 @@ fn find_key(
   key: String,
   last_position: Int,
   position: Int,
-) -> Option(value) {
+  ret_fn: fn(Int, value) -> ret_val,
+) -> Option(ret_val) {
   let entry = result.unwrap(list.at(map.inner, position), None)
 
   case entry {
     None -> None
     Some(e) -> {
       case e.key == key {
-        True -> Some(e.value)
+        True -> Some(ret_fn(position, e.value))
         False -> {
           case position {
             position if position == last_position -> None
-            0 -> find_key(map, key, last_position, list.length(map.inner) - 1)
-            position -> find_key(map, key, last_position, position - 1)
+            0 -> find_key(map, key, last_position, map.size - 1, ret_fn)
+            position -> find_key(map, key, last_position, position - 1, ret_fn)
           }
         }
       }
@@ -230,18 +252,35 @@ fn find_key(
   }
 }
 
-fn rehash(map: Map(value), new_size: Int) -> Map(value) {
-  list.fold(map.inner, new_with_size(new_size), fn(new_map, el) {
-    case el {
-      Some(entry) -> put(new_map, entry.key, entry.value)
-      None -> new_map
-    }
-  })
+fn ret_value(_index: Int, value: value) -> value {
+  value
 }
 
-pub fn calc_hash(map: Map(value), key: String) -> Int {
-  hash.hash(key) % list.length(map.inner)
+fn ret_exists(_index: Int, _value: value) -> Bool {
+  True
+}
+
+fn rehash(map: Map(value), new_size: Int) -> Map(value) {
+  list.fold(
+    map.inner,
+    new_with_size_and_load(new_size, map.load),
+    fn(new_map, el) {
+      case el {
+        Some(entry) -> put(new_map, entry.key, entry.value)
+        None -> new_map
+      }
+    },
+  )
+}
+
+pub fn fix_hash(map: Map(value), hash: Int) -> Int {
+  hash % map.size
   |> int.absolute_value()
+}
+
+pub fn calc_hash(map: Map(value), key: String) -> #(Int, Int) {
+  let hash_value = hash.hash(key)
+  #(fix_hash(map, hash_value), hash_value)
 }
 
 type Entry(value) {
