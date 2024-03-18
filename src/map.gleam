@@ -130,17 +130,15 @@ pub fn size(map: Map(value)) -> Int {
 pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
   let hash = calc_hash(map, key)
 
-  let entry = result.unwrap(list.at(map.inner, hash.0), None)
-
-  case entry {
-    None ->
+  case list.at(map.inner, hash.0) {
+    Ok(None) | Error(Nil) ->
       Map(
         insert_at(map.inner, hash.0, Some(Entry(key, value))),
         map.size,
         map.load,
         map.num_entries + 1,
       )
-    Some(e) -> {
+    Ok(Some(e)) -> {
       case e.key == key {
         True -> {
           Map(
@@ -155,15 +153,15 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
           let new_hash = fix_hash(map, hash.1)
           let new_pos =
             find_gap(map, key, { new_hash + 1 } % map.size, new_hash)
-          let new_size = case new_pos {
-            #(_, True) -> map.num_entries
-            #(_, False) -> map.num_entries + 1
-          }
+
           Map(
             insert_at(map.inner, new_pos.0, Some(Entry(key, value))),
             map.size,
             map.load,
-            new_size,
+            case new_pos.1 {
+              True -> map.num_entries
+              False -> map.num_entries + 1
+            },
           )
         }
       }
@@ -174,11 +172,9 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
 pub fn get(map: Map(value), key: String) -> Option(value) {
   let hash = calc_hash(map, key)
 
-  let entry = result.unwrap(list.at(map.inner, hash.0), None)
-
-  case entry {
-    None -> None
-    Some(e) -> {
+  case list.at(map.inner, hash.0) {
+    Ok(None) | Error(Nil) -> None
+    Ok(Some(e)) -> {
       case e.key == key {
         True -> Some(e.value)
         False -> {
@@ -192,11 +188,9 @@ pub fn get(map: Map(value), key: String) -> Option(value) {
 pub fn contains_key(map: Map(value), key: String) -> Bool {
   let hash = calc_hash(map, key)
 
-  let entry = result.unwrap(list.at(map.inner, hash.0), None)
-
-  case entry {
-    None -> False
-    Some(e) -> {
+  case list.at(map.inner, hash.0) {
+    Ok(None) | Error(Nil) -> False
+    Ok(Some(e)) -> {
       case e.key == key {
         True -> True
         False -> {
@@ -213,11 +207,9 @@ pub fn contains_key(map: Map(value), key: String) -> Bool {
 pub fn remove(map: Map(value), key: String) -> #(Option(value), Map(value)) {
   let hash = calc_hash(map, key)
 
-  let entry = result.unwrap(list.at(map.inner, hash.0), None)
-
-  case entry {
-    None -> #(None, map)
-    Some(e) -> {
+  case list.at(map.inner, hash.0) {
+    Ok(None) | Error(Nil) -> #(None, map)
+    Ok(Some(e)) -> {
       case e.key == key {
         True -> do_remove(map, hash.0, e.value)
         False -> {
@@ -326,11 +318,9 @@ fn find_gap(
   last_position: Int,
   position: Int,
 ) -> #(Int, Bool) {
-  let entry = result.unwrap(list.at(map.inner, position), None)
-
-  case entry {
-    None -> #(position, False)
-    Some(e) -> {
+  case list.at(map.inner, position) {
+    Ok(None) | Error(Nil) -> #(position, False)
+    Ok(Some(e)) -> {
       case e.key == key {
         True -> #(position, True)
         False -> {
@@ -352,11 +342,9 @@ fn find_key(
   position: Int,
   ret_fn: fn(Int, value) -> ret_val,
 ) -> Option(ret_val) {
-  let entry = result.unwrap(list.at(map.inner, position), None)
-
-  case entry {
-    None -> None
-    Some(e) -> {
+  case list.at(map.inner, position) {
+    Ok(None) | Error(Nil) -> None
+    Ok(Some(e)) -> {
       case e.key == key {
         True -> Some(ret_fn(position, e.value))
         False -> {
