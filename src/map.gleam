@@ -1,3 +1,10 @@
+//// Maps are a structure similar to dict in that they map keys to values.
+//// Duplicate keys cannot exist and a key can map to at most one value
+//// 
+//// The Keys are strings, values can be any type but values must be of the same type
+//// 
+//// Maps are unordered
+
 import gleam/option.{type Option, None, Some}
 import gleam/list
 import gleam/int
@@ -10,23 +17,52 @@ const default_size = 11
 
 const default_load = 0.75
 
+type Entry(value) {
+  Entry(key: String, value: value)
+}
+
 pub opaque type Map(value) {
   Map(inner: List(Option(Entry(value))), size: Int, load: Int, num_entries: Int)
 }
 
+/// Creates an empty map
+/// The size and loading factor are set to the default
+/// The size is the starting size for the list that contains the values
+/// The loading factor is the value 0 -> 1 that determines when the
+/// list is resized. This is the percentage of the backing list that is filled.
+/// For example, if the loading factor was 0.5 then when one half of the backing
+/// list is populated, the next addition to the Map will trigger a resize to
+/// ensure the map has usable space
 pub fn new() -> Map(value) {
   new_with_size(default_size)
 }
 
+/// Creates an empty map with specified size
+/// The loading factor is set to default
 pub fn new_with_size(size: Int) -> Map(value) {
   //    glimt.info(log, "Creating Map of size "<>int.to_string(size))
   new_with_size_and_load(size, default_load)
 }
 
+/// Creates an empty map with specified size and loading factor
+/// load is a value 0->1 (non-inclusive) which specifies a percentage (e.g. 0.5 is 50%)
+/// at which point the backing list is resized
+/// This should be kept around 0.6-0.8 to avoid either excessive resizing or
+/// excessive key hash collisions
 pub fn new_with_size_and_load(size: Int, load: Float) -> Map(value) {
+  let load = case load >=. 1.0 || load <. 0.0 {
+    True -> default_load
+    False -> load
+  }
+  let size = case size < 1 {
+    True -> 1
+    False -> size
+  }
   Map(list.repeat(None, size), size, float.round(load *. 100.0), 0)
 }
 
+/// Creates a new empty map with the same sizing/loading properties as the
+/// passed map
 pub fn clear(previous_map: Map(value)) -> Map(value) {
   new_with_size_and_load(
     previous_map.size,
@@ -34,14 +70,63 @@ pub fn clear(previous_map: Map(value)) -> Map(value) {
   )
 }
 
+/// Determines whether the map is empty, i.e. contains no key/values
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// new() |> is_empty
+/// // -> True
+/// ```
+/// 
+/// ```gleam
+/// new() |> put("key", "value") |> is_empty
+/// // -> False
+/// ```
+/// 
 pub fn is_empty(map: Map(value)) -> Bool {
   size(map) == 0
 }
 
+/// Determines whether size of the map, i.e. the number of key/values
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// new() |> size
+/// // -> 0
+/// ```
+/// 
+/// ```gleam
+/// new() |> put("key", "value") |> size
+/// // -> 1
+/// ```
+/// 
 pub fn size(map: Map(value)) -> Int {
   map.num_entries
 }
 
+/// Inserts a value into the map with the given key
+/// 
+/// Will replace value if key already exists
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// new() |> put("key", 999) |> to_string
+/// // -> {"key":999}
+/// ```
+/// 
+/// ```gleam
+/// new() |> put("key", 999) |> put("key2", 111) |> to_string
+/// // -> {"key":999, "key2":111}
+/// ```
+/// 
+/// ```gleam
+/// new() |> put("key", 999) |> put("key", 123) |> to_string
+/// // -> {"key":123}
+/// ```
+/// 
 pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
   let hash = calc_hash(map, key)
 
@@ -342,8 +427,4 @@ pub fn full_count(map: Map(value)) -> Int {
       Some(_) -> acc + 1
     }
   })
-}
-
-type Entry(value) {
-  Entry(key: String, value: value)
 }
