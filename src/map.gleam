@@ -11,12 +11,7 @@ const default_size = 11
 const default_load = 0.75
 
 pub opaque type Map(value) {
-  Map(
-    inner: List(Option(Entry(value))),
-    size: Int,
-    load: Float,
-    num_entries: Int,
-  )
+  Map(inner: List(Option(Entry(value))), size: Int, load: Int, num_entries: Int)
 }
 
 pub fn new() -> Map(value) {
@@ -29,11 +24,14 @@ pub fn new_with_size(size: Int) -> Map(value) {
 }
 
 pub fn new_with_size_and_load(size: Int, load: Float) -> Map(value) {
-  Map(list.repeat(None, size), size, load, 0)
+  Map(list.repeat(None, size), size, float.round(load *. 100.0), 0)
 }
 
 pub fn clear(previous_map: Map(value)) -> Map(value) {
-  new_with_size_and_load(previous_map.size, previous_map.load)
+  new_with_size_and_load(
+    previous_map.size,
+    int.to_float(previous_map.load) /. 100.0,
+  )
 }
 
 pub fn is_empty(map: Map(value)) -> Bool {
@@ -186,14 +184,7 @@ fn insert_at(
 }
 
 fn check_capacity(map: Map(value)) -> Map(value) {
-  case
-    map.num_entries
-    >= {
-      int.to_float(map.size)
-      |> float.multiply(map.load)
-      |> float.round()
-    }
-  {
+  case map.num_entries >= { map.size * map.load / 100 } {
     True -> {
       rehash(map, map.size * 2 + 1)
     }
@@ -277,7 +268,7 @@ fn ret_exists(_index: Int, _value: value) -> Bool {
 fn rehash(map: Map(value), new_size: Int) -> Map(value) {
   list.fold(
     map.inner,
-    new_with_size_and_load(new_size, map.load),
+    new_with_size_and_load(new_size, int.to_float(map.load) /. 100.0),
     fn(new_map, el) {
       case el {
         Some(entry) -> put(new_map, entry.key, entry.value)
