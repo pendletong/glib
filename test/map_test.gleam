@@ -3,7 +3,7 @@ import showtime/tests/should
 import gleam/option.{None, Some}
 import gleam/iterator
 import gleam/int
-import map.{type Map}
+import glib/map
 
 pub fn main() {
   showtime.main()
@@ -169,7 +169,7 @@ pub fn remove_test() {
   check_size_vs_count(new_map)
 }
 
-fn check_size_vs_count(map: Map(value)) {
+fn check_size_vs_count(map) {
   map.size(map)
   |> should.equal(map.full_count(map))
 }

@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/int
-import map
+import glib/map
 import gleamy/bench
 import gleam/list
 import gleam/iterator

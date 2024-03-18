@@ -11,7 +11,7 @@ import gleam/int
 import gleam/float
 import gleam/string
 import gleam/result
-import hash
+import glib/hash
 
 const default_size = 11
 
