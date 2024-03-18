@@ -6,6 +6,7 @@ import gleam/list
 import gleam/iterator
 import gleam/dict
 import gleam/result
+import gleam/float
 
 pub fn main() {
   io.println("Hello from glib!")
@@ -35,22 +36,22 @@ pub fn main() {
   io.debug(map.entries(a))
   io.debug(map.contains_key(a, "keygpo"))
   io.debug(map.contains_key(a, "keygpozzz"))
-  map_bench()
-  dict_bench()
+  io.debug(map.full_count(a))
+  // map_bench()
+  // dict_bench()
   // let l = list.range(1, 50)
   // let s = list.split(l, 1)
   // io.debug(list.concat([s.1, s.0]))
   // bench.run(
   //   [bench.Input("reversed list", list.range(1, 1000))],
-  //   [bench.Function("list.sort()", split_join)],
+  //   [bench.Function("list.sort()", fn(i) { list.at(i, 500) })],
   //   [bench.Duration(1000), bench.Warmup(100)],
   // )
   // |> bench.table([bench.IPS, bench.Min, bench.P(99)])
   // |> io.println()
-
   // bench.run(
   //   [bench.Input("reversed list", list.range(1, 1000))],
-  //   [bench.Function("list.sort()", insert_at)],
+  //   [bench.Function("list.sort()", fn(i) { list.first(list.split(i, 500).1) })],
   //   [bench.Duration(1000), bench.Warmup(100)],
   // )
   // |> bench.table([bench.IPS, bench.Min, bench.P(99)])
@@ -108,7 +109,7 @@ fn map_bench() {
         _,
       ))
     })
-  bench.run(inputs, tests, [bench.Warmup(100), bench.Duration(1000)])
+  bench.run(inputs, tests, [bench.Warmup(100), bench.Duration(2000)])
   |> bench.table([bench.IPS, bench.Min, bench.P(99)])
   |> io.println
 }
@@ -143,7 +144,7 @@ fn dict_bench() {
         _,
       ))
     })
-  bench.run(inputs, tests, [bench.Warmup(100), bench.Duration(1000)])
+  bench.run(inputs, tests, [bench.Warmup(100), bench.Duration(2000)])
   |> bench.table([bench.IPS, bench.Min, bench.P(99)])
   |> io.println
 }
