@@ -9,6 +9,17 @@ import gleam/dict
 pub fn main() {
   io.println("Hello from glib!")
 
+  map.new()
+  |> map.to_string(fn(s) { s })
+  |> io.debug()
+
+  map.new()
+  |> map.put("key", 123)
+  |> map.to_string(fn(s) { int.to_string(s) })
+  |> io.println()
+}
+
+fn extra() {
   let a = map.new()
   let a = map.put(a, "key", 123)
   io.println(map.to_string(a, fn(v) { int.to_string(v) }))

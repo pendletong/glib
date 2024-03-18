@@ -113,17 +113,17 @@ pub fn size(map: Map(value)) -> Int {
 /// ## Examples
 /// 
 /// ```gleam
-/// new() |> put("key", 999) |> to_string
+/// new() |> put("key", 999) |> to_string(fn(i) { int.to_string(i) })
 /// // -> {"key":999}
 /// ```
 /// 
 /// ```gleam
-/// new() |> put("key", 999) |> put("key2", 111) |> to_string
+/// new() |> put("key", 999) |> put("key2", 111) |> to_string(fn(i) { int.to_string(i) })
 /// // -> {"key":999, "key2":111}
 /// ```
 /// 
 /// ```gleam
-/// new() |> put("key", 999) |> put("key", 123) |> to_string
+/// new() |> put("key", 999) |> put("key", 123) |> to_string(fn(i) { int.to_string(i) })
 /// // -> {"key":123}
 /// ```
 /// 
@@ -169,6 +169,22 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
   }
 }
 
+/// Retrieves the option wrapped value from the map for the stored key
+/// 
+/// The key may not exist so then None is returned
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// new() |> put("key", "value") |> get("key")
+/// // -> Ok("value")
+/// ```
+/// 
+/// ```gleam
+/// new() |> put("key", "value") |> get("non-existent")
+/// // -> None
+/// ```
+/// 
 pub fn get(map: Map(value), key: String) -> Option(value) {
   let hash = calc_hash(map, key)
 
@@ -185,6 +201,21 @@ pub fn get(map: Map(value), key: String) -> Option(value) {
   }
 }
 
+/// Returns the existence in the map for the stored key
+/// 
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// new() |> put("key", "value") |> contains_key("key")
+/// // -> True
+/// ```
+/// 
+/// ```gleam
+/// new() |> put("key", "value") |> contains_key("non-existent")
+/// // -> False
+/// ```
+/// 
 pub fn contains_key(map: Map(value), key: String) -> Bool {
   let hash = calc_hash(map, key)
 
@@ -204,6 +235,21 @@ pub fn contains_key(map: Map(value), key: String) -> Bool {
   }
 }
 
+/// Removes the specified key from the map and returns a tuple containing
+/// the removed option wrapped value or None and the altered map without the
+/// specified key
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// new() |> put("key", "value") |> remove("key")
+/// // -> #(Some("value"), {})
+/// ```
+/// 
+/// ```gleam
+/// new() |> put("key", "value") |> remove("non-existent")
+/// // -> #(None, {"key": "value"})
+/// ```
 pub fn remove(map: Map(value), key: String) -> #(Option(value), Map(value)) {
   let hash = calc_hash(map, key)
 
@@ -231,21 +277,20 @@ pub fn remove(map: Map(value), key: String) -> #(Option(value), Map(value)) {
   }
 }
 
-fn do_remove(
-  map: Map(value),
-  index: Int,
-  value: value,
-) -> #(Option(value), Map(value)) {
-  let new_map =
-    Map(
-      insert_at(map.inner, index, None),
-      map.size,
-      map.load,
-      map.num_entries - 1,
-    )
-  #(Some(value), new_map)
-}
-
+/// Returns a list of the keys contained in the map
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// new() |> keys
+/// // -> []
+/// ```
+/// 
+/// ``` gleam
+/// new() |> put("key", "value") |> keys
+/// // -> ["key"]
+/// ```
+/// 
 pub fn keys(map: Map(value)) -> List(String) {
   list.filter_map(map.inner, fn(e: Option(Entry(value))) {
     case e {
@@ -255,6 +300,20 @@ pub fn keys(map: Map(value)) -> List(String) {
   })
 }
 
+/// Returns a list of the values contained in the map
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// new() |> values
+/// // -> []
+/// ```
+/// 
+/// ``` gleam
+/// new() |> put("key", "value") |> values
+/// // -> ["value"]
+/// ```
+/// 
 pub fn values(map: Map(value)) -> List(value) {
   list.filter_map(map.inner, fn(e: Option(Entry(value))) {
     case e {
@@ -264,6 +323,20 @@ pub fn values(map: Map(value)) -> List(value) {
   })
 }
 
+/// Returns a list of the tuples #(key, value) contained in the map
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// new() |> entries
+/// // -> []
+/// ```
+/// 
+/// ``` gleam
+/// new() |> put("key", "value") |> entries
+/// // -> [#("key", "value")]
+/// ```
+/// 
 pub fn entries(map: Map(value)) -> List(#(String, value)) {
   list.filter_map(map.inner, fn(e: Option(Entry(value))) {
     case e {
@@ -273,6 +346,21 @@ pub fn entries(map: Map(value)) -> List(#(String, value)) {
   })
 }
 
+/// Returns a string representation of the passed map
+/// Requires a value_to_string fn to generate the output
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// new() |> to_string(fn(v) { v })
+/// // -> {}
+/// ```
+/// 
+/// ```gleam
+/// new() |> put("key", "value") |> to_string(fn(v) { v })
+/// // -> {"key": "value"}
+/// ```
+/// 
 pub fn to_string(
   map: Map(value),
   value_to_string: fn(value) -> String,
@@ -301,6 +389,23 @@ fn insert_at(
     [entry],
     result.unwrap(list.rest(split_list.1), []),
   ])
+}
+
+fn do_remove(
+  map: Map(value),
+  index: Int,
+  value: value,
+) -> #(Option(value), Map(value)) {
+  // This just does the same as insert_at but passes a None 'entry'
+  // and reduces the num_entries
+  let new_map =
+    Map(
+      insert_at(map.inner, index, None),
+      map.size,
+      map.load,
+      map.num_entries - 1,
+    )
+  #(Some(value), new_map)
 }
 
 fn check_capacity(map: Map(value)) -> Map(value) {
