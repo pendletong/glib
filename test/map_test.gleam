@@ -4,7 +4,6 @@ import gleam/option.{None, Some}
 import gleam/iterator
 import gleam/int
 import map.{type Map}
-import gleam/io
 
 pub fn main() {
   showtime.main()
