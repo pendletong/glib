@@ -50,7 +50,7 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
   case entry {
     None ->
       Map(
-        insert_at(map.inner, hash.0, key, value),
+        insert_at(map.inner, hash.0, Some(Entry(key, value))),
         map.size,
         map.load,
         map.num_entries + 1,
@@ -59,7 +59,7 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
       case e.key == key {
         True -> {
           Map(
-            insert_at(map.inner, hash.0, key, value),
+            insert_at(map.inner, hash.0, Some(Entry(key, value))),
             map.size,
             map.load,
             map.num_entries,
@@ -71,11 +71,11 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
           let new_pos =
             find_gap(map, key, { new_hash + 1 } % map.size, new_hash)
           let new_size = case new_pos {
-            #(_, True) -> map.num_entries + 1
-            #(_, False) -> map.num_entries
+            #(_, True) -> map.num_entries
+            #(_, False) -> map.num_entries + 1
           }
           Map(
-            insert_at(map.inner, new_pos.0, key, value),
+            insert_at(map.inner, new_pos.0, Some(Entry(key, value))),
             map.size,
             map.load,
             new_size,
@@ -125,6 +125,50 @@ pub fn contains_key(map: Map(value), key: String) -> Bool {
   }
 }
 
+pub fn remove(map: Map(value), key: String) -> #(Option(value), Map(value)) {
+  let hash = calc_hash(map, key)
+
+  let entry = result.unwrap(list.at(map.inner, hash.0), None)
+
+  case entry {
+    None -> #(None, map)
+    Some(e) -> {
+      case e.key == key {
+        True -> do_remove(map, hash.0, e.value)
+        False -> {
+          let item =
+            find_key(
+              map,
+              key,
+              { hash.0 + 1 } % map.size,
+              hash.0,
+              ret_index_and_value,
+            )
+          case item {
+            None -> #(None, map)
+            Some(#(index, value)) -> do_remove(map, index, value)
+          }
+        }
+      }
+    }
+  }
+}
+
+fn do_remove(
+  map: Map(value),
+  index: Int,
+  value: value,
+) -> #(Option(value), Map(value)) {
+  let new_map =
+    Map(
+      insert_at(map.inner, index, None),
+      map.size,
+      map.load,
+      map.num_entries - 1,
+    )
+  #(Some(value), new_map)
+}
+
 pub fn keys(map: Map(value)) -> List(String) {
   list.filter_map(map.inner, fn(e: Option(Entry(value))) {
     case e {
@@ -172,13 +216,12 @@ pub fn to_string(
 fn insert_at(
   map_list: List(Option(Entry(value))),
   at: Int,
-  key: String,
-  value: value,
+  entry: Option(Entry(value)),
 ) -> List(Option(Entry(value))) {
   let split_list = list.split(map_list, at)
   list.concat([
     split_list.0,
-    [Some(Entry(key, value))],
+    [entry],
     result.unwrap(list.rest(split_list.1), []),
   ])
 }
@@ -265,6 +308,10 @@ fn ret_exists(_index: Int, _value: value) -> Bool {
   True
 }
 
+fn ret_index_and_value(index: Int, value: value) -> #(Int, value) {
+  #(index, value)
+}
+
 fn rehash(map: Map(value), new_size: Int) -> Map(value) {
   list.fold(
     map.inner,
@@ -286,6 +333,15 @@ pub fn fix_hash(map: Map(value), hash: Int) -> Int {
 pub fn calc_hash(map: Map(value), key: String) -> #(Int, Int) {
   let hash_value = hash.hash(key)
   #(fix_hash(map, hash_value), hash_value)
+}
+
+pub fn full_count(map: Map(value)) -> Int {
+  list.fold(map.inner, 0, fn(acc, e) {
+    case e {
+      None -> acc
+      Some(_) -> acc + 1
+    }
+  })
 }
 
 type Entry(value) {

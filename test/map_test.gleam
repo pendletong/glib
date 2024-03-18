@@ -3,7 +3,8 @@ import showtime/tests/should
 import gleam/option.{None, Some}
 import gleam/iterator
 import gleam/int
-import map
+import map.{type Map}
+import gleam/io
 
 pub fn main() {
   showtime.main()
@@ -30,11 +31,16 @@ pub fn new_with_size_test() {
 
 pub fn put_test() {
   let a = map.new()
+
+  check_size_vs_count(a)
+
   let new_map = map.put(a, "key", "123")
   map.size(new_map)
   |> should.equal(1)
   map.is_empty(new_map)
   |> should.equal(False)
+
+  check_size_vs_count(new_map)
 
   map.get(new_map, "key")
   |> should.equal(Some("123"))
@@ -45,6 +51,8 @@ pub fn put_test() {
   map.get(new_map, "key")
   |> should.equal(Some("999"))
 
+  check_size_vs_count(new_map)
+
   // add new entry
   // key should hash to the same value as copykey
   // this is not the best test because if the hash
@@ -54,6 +62,8 @@ pub fn put_test() {
   map.get(new_map, "copykey")
   |> should.equal(Some("111"))
 
+  check_size_vs_count(new_map)
+
   // add 20 new entries
   // this should grow the map so we can test that the
   // enlarged map still contains the original entries
@@ -62,9 +72,11 @@ pub fn put_test() {
     it
     |> iterator.fold(new_map, fn(map, i) {
       let key = "growkey" <> int.to_string(i)
-      map.put(new_map, key, key)
+      map.put(map, key, key)
     })
   }
+
+  check_size_vs_count(new_map)
 
   it
   |> iterator.all(fn(i) {
@@ -83,9 +95,13 @@ pub fn clear_test() {
   map.size(new_map)
   |> should.equal(1)
 
+  check_size_vs_count(new_map)
+
   let new_map = map.clear(new_map)
   map.size(new_map)
   |> should.equal(0)
+
+  check_size_vs_count(new_map)
 }
 
 pub fn get_test() {
@@ -98,4 +114,63 @@ pub fn get_test() {
 
   map.get(new_map, "test")
   |> should.equal(Some("value"))
+}
+
+pub fn remove_test() {
+  let a = map.new()
+
+  let new_map = map.put(a, "item1", "item1")
+  new_map
+  |> map.size
+  |> should.equal(1)
+
+  check_size_vs_count(new_map)
+
+  let ret = map.remove(new_map, "item1")
+  let new_map = ret.1
+  ret.0
+  |> should.equal(Some("item1"))
+  map.size(new_map)
+  |> should.equal(0)
+
+  check_size_vs_count(new_map)
+
+  let it = iterator.range(0, 19)
+  let new_map = {
+    it
+    |> iterator.fold(new_map, fn(map, i) {
+      let key = "growkey" <> int.to_string(i)
+      map.put(map, key, key)
+    })
+  }
+
+  new_map
+  |> map.size
+  |> should.equal(20)
+
+  let ret = map.remove(new_map, "growkey9")
+  let new_map = ret.1
+  ret.0
+  |> should.equal(Some("growkey9"))
+  new_map
+  |> map.size
+  |> should.equal(19)
+
+  check_size_vs_count(new_map)
+
+  // Remove non-existent key
+  let ret = map.remove(new_map, "growkey999")
+  let new_map = ret.1
+  ret.0
+  |> should.equal(None)
+  new_map
+  |> map.size
+  |> should.equal(19)
+
+  check_size_vs_count(new_map)
+}
+
+fn check_size_vs_count(map: Map(value)) {
+  map.size(map)
+  |> should.equal(map.full_count(map))
 }
