@@ -1,12 +1,12 @@
-import gleeunit
-import gleeunit/should
+import showtime
+import showtime/tests/should
 import gleam/option.{None, Some}
 import gleam/iterator
 import gleam/int
 import map
 
 pub fn main() {
-  gleeunit.main()
+  showtime.main()
 }
 
 pub fn new_test() {

@@ -1,8 +1,8 @@
-import gleeunit
-import gleeunit/should
+import showtime
+import showtime/tests/should
 
 pub fn main() {
-  gleeunit.main()
+  showtime.main()
 }
 
 // gleeunit test functions end in `_test`
