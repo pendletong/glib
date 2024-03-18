@@ -320,20 +320,6 @@ fn check_capacity(map: Map(value)) -> Map(value) {
   }
 }
 
-// fn find(map: Map(value), key: String, position: Int) -> #(Int, Bool)
-// {
-//   let search_list = list.split(map.inner, position)
-
-//   let found = list.find(list.concat([search_list.1, search_list.0]), fn(entry: Option(Entry(value))) {
-//     case entry {
-//       None -> True
-//       Some(Entry(key, _)) -> True
-//       _ -> False
-//     }
-//   })
-
-// }
-
 fn find_gap(
   map: Map(value),
   key: String,
@@ -410,12 +396,12 @@ fn rehash(map: Map(value), new_size: Int) -> Map(value) {
   )
 }
 
-pub fn fix_hash(map: Map(value), hash: Int) -> Int {
+fn fix_hash(map: Map(value), hash: Int) -> Int {
   hash % map.size
   |> int.absolute_value()
 }
 
-pub fn calc_hash(map: Map(value), key: String) -> #(Int, Int) {
+fn calc_hash(map: Map(value), key: String) -> #(Int, Int) {
   let hash_value = hash.hash(key)
   #(fix_hash(map, hash_value), hash_value)
 }
