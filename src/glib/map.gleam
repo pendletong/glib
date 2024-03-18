@@ -128,12 +128,12 @@ pub fn size(map: Map(value)) -> Int {
 /// ```
 /// 
 pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
-  let hash = calc_hash(map, key)
+  let #(hash, original_hash) = calc_hash(map, key)
 
-  case list.at(map.inner, hash.0) {
+  case list.at(map.inner, hash) {
     Ok(None) | Error(Nil) ->
       Map(
-        insert_at(map.inner, hash.0, Some(Entry(key, value))),
+        insert_at(map.inner, hash, Some(Entry(key, value))),
         map.size,
         map.load,
         map.num_entries + 1,
@@ -142,7 +142,7 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
       case e.key == key {
         True -> {
           Map(
-            insert_at(map.inner, hash.0, Some(Entry(key, value))),
+            insert_at(map.inner, hash, Some(Entry(key, value))),
             map.size,
             map.load,
             map.num_entries,
@@ -150,15 +150,15 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
         }
         False -> {
           let map = check_capacity(map)
-          let new_hash = fix_hash(map, hash.1)
-          let new_pos =
+          let new_hash = fix_hash(map, original_hash)
+          let #(position, overwrite) =
             find_gap(map, key, { new_hash + 1 } % map.size, new_hash)
 
           Map(
-            insert_at(map.inner, new_pos.0, Some(Entry(key, value))),
+            insert_at(map.inner, position, Some(Entry(key, value))),
             map.size,
             map.load,
-            case new_pos.1 {
+            case overwrite {
               True -> map.num_entries
               False -> map.num_entries + 1
             },
@@ -186,15 +186,15 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
 /// ```
 /// 
 pub fn get(map: Map(value), key: String) -> Option(value) {
-  let hash = calc_hash(map, key)
+  let #(hash, _original_hash) = calc_hash(map, key)
 
-  case list.at(map.inner, hash.0) {
+  case list.at(map.inner, hash) {
     Ok(None) | Error(Nil) -> None
     Ok(Some(e)) -> {
       case e.key == key {
         True -> Some(e.value)
         False -> {
-          find_key(map, key, { hash.0 + 1 } % map.size, hash.0, ret_value)
+          find_key(map, key, { hash + 1 } % map.size, hash, ret_value)
         }
       }
     }
@@ -217,16 +217,16 @@ pub fn get(map: Map(value), key: String) -> Option(value) {
 /// ```
 /// 
 pub fn contains_key(map: Map(value), key: String) -> Bool {
-  let hash = calc_hash(map, key)
+  let #(hash, _original_hash) = calc_hash(map, key)
 
-  case list.at(map.inner, hash.0) {
+  case list.at(map.inner, hash) {
     Ok(None) | Error(Nil) -> False
     Ok(Some(e)) -> {
       case e.key == key {
         True -> True
         False -> {
           option.unwrap(
-            find_key(map, key, { hash.0 + 1 } % map.size, hash.0, ret_exists),
+            find_key(map, key, { hash + 1 } % map.size, hash, ret_exists),
             False,
           )
         }
@@ -251,20 +251,20 @@ pub fn contains_key(map: Map(value), key: String) -> Bool {
 /// // -> #(None, {"key": "value"})
 /// ```
 pub fn remove(map: Map(value), key: String) -> #(Option(value), Map(value)) {
-  let hash = calc_hash(map, key)
+  let #(hash, _original_hash) = calc_hash(map, key)
 
-  case list.at(map.inner, hash.0) {
+  case list.at(map.inner, hash) {
     Ok(None) | Error(Nil) -> #(None, map)
     Ok(Some(e)) -> {
       case e.key == key {
-        True -> do_remove(map, hash.0, e.value)
+        True -> do_remove(map, hash, e.value)
         False -> {
           let item =
             find_key(
               map,
               key,
-              { hash.0 + 1 } % map.size,
-              hash.0,
+              { hash + 1 } % map.size,
+              hash,
               ret_index_and_value,
             )
           case item {
@@ -383,12 +383,8 @@ fn insert_at(
   at: Int,
   entry: Option(Entry(value)),
 ) -> List(Option(Entry(value))) {
-  let split_list = list.split(map_list, at)
-  list.concat([
-    split_list.0,
-    [entry],
-    result.unwrap(list.rest(split_list.1), []),
-  ])
+  let #(split_left, split_right) = list.split(map_list, at)
+  list.concat([split_left, [entry], result.unwrap(list.rest(split_right), [])])
 }
 
 fn do_remove(

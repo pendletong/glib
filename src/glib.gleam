@@ -17,6 +17,9 @@ pub fn main() {
   |> map.put("key", 123)
   |> map.to_string(fn(s) { int.to_string(s) })
   |> io.println()
+
+  map_bench()
+  dict_bench()
 }
 
 fn extra() {
