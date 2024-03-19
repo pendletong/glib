@@ -7,6 +7,44 @@ import gleam/iterator
 import gleam/dict
 
 pub fn main() {
+  tests()
+  // rehash_test()
+}
+
+fn rehash_test() {
+  let a = map.new()
+
+  let new_map = map.put(a, "key", "123")
+
+  io.debug(new_map)
+  // overwrite key
+  let new_map = map.put(new_map, "key", "999")
+  io.debug(new_map)
+
+  // add new entry
+  // key should hash to the same value as copykey
+  // this is not the best test because if the hash
+  // process changes then this test stops working
+  let new_map = map.put(new_map, "copykey", "111")
+
+  io.debug(new_map)
+
+  // add 20 new entries
+  // this should grow the map so we can test that the
+  // enlarged map still contains the original entries
+  let it = iterator.range(0, 19)
+  let new_map = {
+    it
+    |> iterator.fold(new_map, fn(map, i) {
+      let key = "growkey" <> int.to_string(i)
+      let new_map = map.put(map, key, key)
+      // io.debug(new_map)
+      new_map
+    })
+  }
+}
+
+fn tests() {
   io.println("Hello from glib!")
 
   map.new()
@@ -18,15 +56,20 @@ pub fn main() {
   |> map.to_string(fn(s) { int.to_string(s) })
   |> io.println()
 
-  map_bench([0, 5, 10, 15, 18, 50, 100, 1000])
+  // map_bench([0, 5, 10, 15, 18, 50, 100, 1000])
+  map_bench([
+    7, 8, 9, 10, 16, 17, 18, 34, 35, 36, 70, 71, 72, 142, 143, 144, 286, 287,
+    288, 574, 575, 576, 1150, 1151, 1152, 1153,
+  ])
+  // 1151, 1152])
   // dict_bench([0, 5, 10, 15, 18, 50, 100, 1000])
   // dict_bench()
-  iterator.range(1, 10)
-  |> iterator.fold(map.new(), fn(acc, i) {
-    let kv = "key" <> int.to_string(i)
-    map.put(acc, kv, kv)
-  })
-  |> io.debug
+  // iterator.range(1, 10)
+  // |> iterator.fold(map.new(), fn(acc, i) {
+  //   let kv = "key" <> int.to_string(i)
+  //   map.put(acc, kv, kv)
+  // })
+  // |> io.debug
 }
 
 fn extra() {
@@ -68,8 +111,7 @@ fn map_bench(init_sizes: List(Int)) {
           0 -> map.new()
           _ -> {
             iterator.range(1, size)
-            |> iterator.to_list
-            |> list.fold(map.new(), fn(new_map, i) {
+            |> iterator.fold(map.new(), fn(new_map, i) {
               map.put(
                 new_map,
                 "key"
@@ -91,7 +133,7 @@ fn map_bench(init_sizes: List(Int)) {
   ]
 
   bench.run(inputs, tests, [bench.Warmup(100), bench.Duration(2000)])
-  |> bench.table([bench.IPS, bench.Min, bench.P(99)])
+  |> bench.table([bench.IPS, bench.Min, bench.Max, bench.P(99)])
   |> io.println
 }
 
