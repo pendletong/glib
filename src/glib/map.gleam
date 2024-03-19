@@ -132,40 +132,27 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
   let #(hash, original_hash) = calc_hash(map.size, key)
 
   case list.at(map.inner, hash) {
-    Ok(None) | Error(Nil) ->
+    Ok(Some(e)) if e.key == key -> {
       Map(
         insert_at(map.inner, hash, Some(Entry(key, value))),
         map.size,
         map.load,
-        map.num_entries + 1,
+        map.num_entries,
       )
-    Ok(Some(e)) -> {
-      case e.key == key {
-        True -> {
-          Map(
-            insert_at(map.inner, hash, Some(Entry(key, value))),
-            map.size,
-            map.load,
-            map.num_entries,
-          )
-        }
-        False -> {
-          let map = check_capacity(map)
-          let new_hash = fix_hash(map.size, original_hash)
-          let #(position, overwrite) =
-            find_gap(map, key, { new_hash + 1 } % map.size, new_hash)
-
-          Map(
-            insert_at(map.inner, position, Some(Entry(key, value))),
-            map.size,
-            map.load,
-            case overwrite {
-              True -> map.num_entries
-              False -> map.num_entries + 1
-            },
-          )
-        }
-      }
+    }
+    _ -> {
+      let #(map, new_hash) = check_capacity(map, original_hash)
+      let new_hash = option.unwrap(new_hash, hash)
+      let #(position, overwrite) =
+        find_gap(map, key, { new_hash + 1 } % map.size, new_hash)
+      Map(
+        ..map,
+        inner: insert_at(map.inner, position, Some(Entry(key, value))),
+        num_entries: case overwrite {
+          True -> map.num_entries
+          False -> map.num_entries + 1
+        },
+      )
     }
   }
 }
@@ -188,7 +175,6 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
 /// 
 pub fn get(map: Map(value), key: String) -> Option(value) {
   let #(hash, _original_hash) = calc_hash(map.size, key)
-
   case list.at(map.inner, hash) {
     Ok(None) | Error(Nil) -> None
     Ok(Some(e)) -> {
@@ -405,12 +391,21 @@ fn do_remove(
   #(Some(value), new_map)
 }
 
-fn check_capacity(map: Map(value)) -> Map(value) {
+/// Checks whether the current map contains >= load entries
+/// If so return a tuple containing the new resized map and the new hash of the 
+/// key we are currently processing
+/// Otherwise just return the a tuple containing the original map and None to signify
+/// no change to the capacity
+fn check_capacity(
+  map: Map(value),
+  original_hash: Int,
+) -> #(Map(value), Option(Int)) {
   case map.num_entries >= { map.size * map.load / 100 } {
     True -> {
-      optimised_rehash(map, map.size * 2 + 1)
+      let new_map = optimised_rehash(map, map.size * 2 + 1)
+      #(new_map, Some(fix_hash(new_map.size, original_hash)))
     }
-    _ -> map
+    _ -> #(map, None)
   }
 }
 
@@ -497,6 +492,23 @@ type RehashData(a) {
   )
 }
 
+/// Optimised method of rehashing. Much better than just creating a new
+/// map and reinserting everything :P
+/// 
+/// The algorithm is as follows
+/// Construct list of new hash values for all current entries
+/// Reverse this list because prepnding is quicker so go from tail of the list
+/// Iterate the list
+///   If the current index is the same as the new index of the head entry
+///     -> If the list is empty then this is the start so add to the new list
+///     -> Otherwise add to a duplicates list. This will be processed later
+///   Otherwise the new index must be less than the current index. If it is not the
+///   next index then insert the correct number of Nones to the head of the list
+/// This will result in a list containing the unique entries. Process the duplicates
+/// that got built up during the above process in the usual 'put' way
+/// (A slight optimisation might be possible here to use the duplicate list while
+/// inserting Nones. Basically drain the list instead of outputting nones. The data structures
+/// around the none insertion are pretty gnarly so I'll leave that as a future endeavour)
 fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
   let entries =
     list.fold(map.inner, [], fn(acc, en) {
@@ -508,7 +520,6 @@ fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
       }
     })
     |> list.sort(fn(i1, i2) { int.compare({ i2.0 }.0, { i1.0 }.0) })
-
   let proc_list =
     list.fold(
       entries,
@@ -517,15 +528,21 @@ fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
         case acc.index == { en.0 }.0 && acc.new_map_list != [] {
           True -> RehashData(..acc, duplicates: [en, ..acc.duplicates])
           False -> {
-            let it = case acc.index == { en.0 }.0 + 1 {
+            let it = case acc.index <= { en.0 }.0 + 1 {
               True -> iterator.empty()
-              False -> iterator.range(acc.index, { en.0 }.0 + 1)
+              False -> iterator.range(acc.index - 1, { en.0 }.0 + 1)
             }
-            let new_list =
-              it
-              |> iterator.fold(acc.new_map_list, fn(acc, _i) { [None, ..acc] })
+
             RehashData(
-              [Some(en.1), ..new_list],
+              [
+                Some(en.1),
+                ..{
+                  it
+                  |> iterator.fold(acc.new_map_list, fn(acc, _i) {
+                    [None, ..acc]
+                  })
+                }
+              ],
               acc.duplicates,
               { en.0 }.0,
               acc.count + 1,
@@ -534,6 +551,7 @@ fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
         }
       },
     )
+
   let it = case proc_list.index == 0 {
     True -> iterator.empty()
     False -> iterator.range(proc_list.index - 1, 0)
@@ -551,7 +569,6 @@ fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
       put(acc, entry.key, entry.value)
     },
   )
-  // rehash(map, new_size)
 }
 
 fn fix_hash(map_size: Int, hash: Int) -> Int {

@@ -86,6 +86,14 @@ pub fn put_test() {
       _ -> False
     }
   })
+  |> should.be_true()
+
+  it
+  |> iterator.all(fn(i) {
+    let key = "growkey" <> int.to_string(i)
+    map.contains_key(new_map, key)
+  })
+  |> should.be_true()
 }
 
 pub fn clear_test() {
