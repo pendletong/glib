@@ -572,8 +572,11 @@ fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
 }
 
 fn fix_hash(map_size: Int, hash: Int) -> Int {
-  hash % map_size
-  |> int.absolute_value()
+  {
+    hash
+    |> int.absolute_value()
+  }
+  % map_size
 }
 
 fn calc_hash(map_size: Int, key: String) -> #(Int, Int) {
