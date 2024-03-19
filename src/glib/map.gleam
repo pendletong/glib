@@ -12,6 +12,7 @@ import gleam/float
 import gleam/string
 import gleam/result
 import glib/hash
+import gleam/iterator
 
 const default_size = 11
 
@@ -128,7 +129,7 @@ pub fn size(map: Map(value)) -> Int {
 /// ```
 /// 
 pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
-  let #(hash, original_hash) = calc_hash(map, key)
+  let #(hash, original_hash) = calc_hash(map.size, key)
 
   case list.at(map.inner, hash) {
     Ok(None) | Error(Nil) ->
@@ -150,7 +151,7 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
         }
         False -> {
           let map = check_capacity(map)
-          let new_hash = fix_hash(map, original_hash)
+          let new_hash = fix_hash(map.size, original_hash)
           let #(position, overwrite) =
             find_gap(map, key, { new_hash + 1 } % map.size, new_hash)
 
@@ -186,7 +187,7 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
 /// ```
 /// 
 pub fn get(map: Map(value), key: String) -> Option(value) {
-  let #(hash, _original_hash) = calc_hash(map, key)
+  let #(hash, _original_hash) = calc_hash(map.size, key)
 
   case list.at(map.inner, hash) {
     Ok(None) | Error(Nil) -> None
@@ -217,7 +218,7 @@ pub fn get(map: Map(value), key: String) -> Option(value) {
 /// ```
 /// 
 pub fn contains_key(map: Map(value), key: String) -> Bool {
-  let #(hash, _original_hash) = calc_hash(map, key)
+  let #(hash, _original_hash) = calc_hash(map.size, key)
 
   case list.at(map.inner, hash) {
     Ok(None) | Error(Nil) -> False
@@ -251,7 +252,7 @@ pub fn contains_key(map: Map(value), key: String) -> Bool {
 /// // -> #(None, {"key": "value"})
 /// ```
 pub fn remove(map: Map(value), key: String) -> #(Option(value), Map(value)) {
-  let #(hash, _original_hash) = calc_hash(map, key)
+  let #(hash, _original_hash) = calc_hash(map.size, key)
 
   case list.at(map.inner, hash) {
     Ok(None) | Error(Nil) -> #(None, map)
@@ -407,7 +408,7 @@ fn do_remove(
 fn check_capacity(map: Map(value)) -> Map(value) {
   case map.num_entries >= { map.size * map.load / 100 } {
     True -> {
-      rehash(map, map.size * 2 + 1)
+      optimised_rehash(map, map.size * 2 + 1)
     }
     _ -> map
   }
@@ -478,21 +479,89 @@ fn rehash(map: Map(value), new_size: Int) -> Map(value) {
     new_with_size_and_load(new_size, int.to_float(map.load) /. 100.0),
     fn(new_map, el) {
       case el {
-        Some(entry) -> put(new_map, entry.key, entry.value)
+        Some(entry) -> {
+          put(new_map, entry.key, entry.value)
+        }
         None -> new_map
       }
     },
   )
 }
 
-fn fix_hash(map: Map(value), hash: Int) -> Int {
-  hash % map.size
+type RehashData(a) {
+  RehashData(
+    new_map_list: List(Option(Entry(a))),
+    duplicates: List(#(#(Int, Int), Entry(a))),
+    index: Int,
+    count: Int,
+  )
+}
+
+fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
+  let entries =
+    list.fold(map.inner, [], fn(acc, en) {
+      case en {
+        Some(entry) -> {
+          [#(calc_hash(new_size, entry.key), entry), ..acc]
+        }
+        None -> acc
+      }
+    })
+    |> list.sort(fn(i1, i2) { int.compare({ i2.0 }.0, { i1.0 }.0) })
+
+  let proc_list =
+    list.fold(
+      entries,
+      RehashData([], [], new_size - 1, 0),
+      fn(acc: RehashData(value), en) {
+        case acc.index == { en.0 }.0 && acc.new_map_list != [] {
+          True -> RehashData(..acc, duplicates: [en, ..acc.duplicates])
+          False -> {
+            let it = case acc.index == { en.0 }.0 + 1 {
+              True -> iterator.empty()
+              False -> iterator.range(acc.index, { en.0 }.0 + 1)
+            }
+            let new_list =
+              it
+              |> iterator.fold(acc.new_map_list, fn(acc, _i) { [None, ..acc] })
+            RehashData(
+              [Some(en.1), ..new_list],
+              acc.duplicates,
+              { en.0 }.0,
+              acc.count + 1,
+            )
+          }
+        }
+      },
+    )
+  let it = case proc_list.index == 0 {
+    True -> iterator.empty()
+    False -> iterator.range(proc_list.index - 1, 0)
+  }
+  let res_list =
+    iterator.fold(it, proc_list, fn(acc, _en) {
+      RehashData(..acc, new_map_list: [None, ..acc.new_map_list])
+    })
+
+  res_list.duplicates
+  |> list.fold(
+    Map(res_list.new_map_list, new_size, map.load, res_list.count),
+    fn(acc, en) {
+      let entry = en.1
+      put(acc, entry.key, entry.value)
+    },
+  )
+  // rehash(map, new_size)
+}
+
+fn fix_hash(map_size: Int, hash: Int) -> Int {
+  hash % map_size
   |> int.absolute_value()
 }
 
-fn calc_hash(map: Map(value), key: String) -> #(Int, Int) {
+fn calc_hash(map_size: Int, key: String) -> #(Int, Int) {
   let hash_value = hash.hash(key)
-  #(fix_hash(map, hash_value), hash_value)
+  #(fix_hash(map_size, hash_value), hash_value)
 }
 
 pub fn full_count(map: Map(value)) -> Int {

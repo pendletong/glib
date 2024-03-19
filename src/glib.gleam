@@ -18,8 +18,15 @@ pub fn main() {
   |> map.to_string(fn(s) { int.to_string(s) })
   |> io.println()
 
-  map_bench()
-  dict_bench()
+  map_bench([0, 5, 10, 15, 18, 50, 100, 1000])
+  // dict_bench([0, 5, 10, 15, 18, 50, 100, 1000])
+  // dict_bench()
+  iterator.range(1, 10)
+  |> iterator.fold(map.new(), fn(acc, i) {
+    let kv = "key" <> int.to_string(i)
+    map.put(acc, kv, kv)
+  })
+  |> io.debug
 }
 
 fn extra() {
@@ -49,15 +56,82 @@ fn extra() {
   io.debug(map.contains_key(a, "keygpo"))
   io.debug(map.contains_key(a, "keygpozzz"))
   io.debug(map.full_count(a))
-  map_bench()
-  dict_bench()
+  // map_bench([0, 5, 10, 15, 18, 50, 100, 1000])
+  // dict_bench([0, 5, 10, 15, 18, 50, 100, 1000])
 }
 
-fn map_bench() {
+fn map_bench(init_sizes: List(Int)) {
+  let inputs =
+    list.map(init_sizes, fn(size) {
+      bench.Input("Map size " <> int.to_string(size), {
+        case size {
+          0 -> map.new()
+          _ -> {
+            iterator.range(1, size)
+            |> iterator.to_list
+            |> list.fold(map.new(), fn(new_map, i) {
+              map.put(
+                new_map,
+                "key"
+                  <> int.to_string(i)
+                  <> "_"
+                  <> int.to_string(int.random(1_000_000)),
+                "value" <> int.to_string(i),
+              )
+            })
+          }
+        }
+      })
+    })
+
+  let tests = [
+    bench.Function("Add Entry", fn(test_map: map.Map(String)) {
+      map.put(test_map, "First", "Entry")
+    }),
+  ]
+
+  bench.run(inputs, tests, [bench.Warmup(100), bench.Duration(2000)])
+  |> bench.table([bench.IPS, bench.Min, bench.P(99)])
+  |> io.println
+}
+
+fn dict_bench(init_sizes: List(Int)) {
+  let inputs =
+    list.map(init_sizes, fn(size) {
+      bench.Input("Map size " <> int.to_string(size), {
+        case size {
+          0 -> dict.new()
+          _ -> {
+            iterator.range(1, size)
+            |> iterator.to_list
+            |> list.fold(dict.new(), fn(new_map, i) {
+              dict.insert(
+                new_map,
+                "key" <> int.to_string(i),
+                "value" <> int.to_string(i),
+              )
+            })
+          }
+        }
+      })
+    })
+
+  let tests = [
+    bench.Function("Add Entry", fn(test_map: dict.Dict(String, String)) {
+      dict.insert(test_map, "First", "Entry")
+    }),
+  ]
+
+  bench.run(inputs, tests, [bench.Warmup(100), bench.Duration(2000)])
+  |> bench.table([bench.IPS, bench.Min, bench.P(99)])
+  |> io.println
+}
+
+fn dict_bench2() {
   let inputs = [bench.Input("simple test", #("First", "Entry"))]
 
-  let map_test = fn(test_map: map.Map(value), entry: #(String, value)) {
-    map.put(test_map, entry.0, entry.1)
+  let map_test = fn(test_map: dict.Dict(String, value), entry: #(String, value)) {
+    dict.insert(test_map, entry.0, entry.1)
   }
 
   let init_sizes = [0, 5, 10, 15, 18, 50, 100, 1000]
@@ -66,12 +140,12 @@ fn map_bench() {
       bench.Function("Map size " <> int.to_string(size), map_test(
         {
           case size {
-            0 -> map.new()
+            0 -> dict.new()
             _ -> {
               iterator.range(1, size)
               |> iterator.to_list
-              |> list.fold(map.new(), fn(new_map, i) {
-                map.put(
+              |> list.fold(dict.new(), fn(new_map, i) {
+                dict.insert(
                   new_map,
                   "key" <> int.to_string(i),
                   "value" <> int.to_string(i),
@@ -88,7 +162,7 @@ fn map_bench() {
   |> io.println
 }
 
-fn dict_bench() {
+fn list_bench() {
   let inputs = [bench.Input("simple test", #("First", "Entry"))]
 
   let map_test = fn(test_map: dict.Dict(String, value), entry: #(String, value)) {
