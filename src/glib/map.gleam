@@ -371,7 +371,14 @@ fn insert_at(
   entry: Option(Entry(value)),
 ) -> List(Option(Entry(value))) {
   let #(split_left, split_right) = list.split(map_list, at)
-  list.concat([split_left, [entry], result.unwrap(list.rest(split_right), [])])
+  list.concat([
+    split_left,
+    [entry],
+    case split_right {
+      [] -> []
+      [_, ..right] -> right
+    },
+  ])
 }
 
 fn do_remove(
@@ -423,13 +430,24 @@ fn find_gap(
         False -> {
           case position {
             position if position == last_position -> #(-1, False)
-            0 -> find_gap(map, key, last_position, map.size - 1)
-            position -> find_gap(map, key, last_position, position - 1)
+            0 -> {
+              // io.debug("_")
+              find_gap(map, key, last_position, map.size - 1)
+            }
+            position -> {
+              // io.debug("+")
+              find_gap(map, key, last_position, position - 1)
+            }
           }
         }
       }
     }
   }
+}
+
+fn at(list: List(v), pos: Int) -> v {
+  let assert [r, ..] = list.split(list, pos).1
+  r
 }
 
 fn find_key(
@@ -520,29 +538,20 @@ fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
       }
     })
     |> list.sort(fn(i1, i2) { int.compare({ i2.0 }.0, { i1.0 }.0) })
+
   let proc_list =
     list.fold(
       entries,
-      RehashData([], [], new_size - 1, 0),
+      RehashData([], [], new_size, 0),
       fn(acc: RehashData(value), en) {
-        case acc.index == { en.0 }.0 && acc.new_map_list != [] {
+        case acc.index == { en.0 }.0 {
           True -> RehashData(..acc, duplicates: [en, ..acc.duplicates])
           False -> {
-            let it = case acc.index <= { en.0 }.0 + 1 {
-              True -> iterator.empty()
-              False -> iterator.range(acc.index - 1, { en.0 }.0 + 1)
-            }
-
             RehashData(
-              [
-                Some(en.1),
-                ..{
-                  it
-                  |> iterator.fold(acc.new_map_list, fn(acc, _i) {
-                    [None, ..acc]
-                  })
-                }
-              ],
+              list.append(
+                [Some(en.1), ..list.repeat(None, acc.index - { en.0 }.0 - 1)],
+                acc.new_map_list,
+              ),
               acc.duplicates,
               { en.0 }.0,
               acc.count + 1,
@@ -551,7 +560,6 @@ fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
         }
       },
     )
-
   let it = case proc_list.index == 0 {
     True -> iterator.empty()
     False -> iterator.range(proc_list.index - 1, 0)
@@ -560,7 +568,6 @@ fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
     iterator.fold(it, proc_list, fn(acc, _en) {
       RehashData(..acc, new_map_list: [None, ..acc.new_map_list])
     })
-
   res_list.duplicates
   |> list.fold(
     Map(res_list.new_map_list, new_size, map.load, res_list.count),
@@ -582,6 +589,10 @@ fn fix_hash(map_size: Int, hash: Int) -> Int {
 fn calc_hash(map_size: Int, key: String) -> #(Int, Int) {
   let hash_value = hash.hash(key)
   #(fix_hash(map_size, hash_value), hash_value)
+}
+
+pub fn list_size(map: Map(value)) -> Int {
+  list.length(map.inner)
 }
 
 pub fn full_count(map: Map(value)) -> Int {
