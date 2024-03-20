@@ -3,7 +3,9 @@ import showtime/tests/should
 import gleam/option.{None, Some}
 import gleam/iterator
 import gleam/int
+import gleam/list
 import glib/map
+import gleam/io
 
 pub fn main() {
   showtime.main()
@@ -180,4 +182,28 @@ pub fn remove_test() {
 fn check_size_vs_count(map) {
   map.size(map)
   |> should.equal(map.full_count(map))
+}
+
+pub fn random_test() {
+  iterator.repeatedly(fn() { int.random(995) + 5 })
+  |> iterator.take(50)
+  |> iterator.each(fn(l) {
+    let #(map, keys) =
+      iterator.range(0, l)
+      |> iterator.fold(#(map.new(), []), fn(acc, i) {
+        let #(new_map, keys) = acc
+        let key =
+          "growkey"
+          <> int.to_string(i)
+          <> "_"
+          <> int.to_string(int.random(1_000_000))
+
+        #(map.put(new_map, key, key), [key, ..keys])
+      })
+
+    list.each(keys, fn(k) {
+      map.contains_key(map, k)
+      |> should.be_true()
+    })
+  })
 }
