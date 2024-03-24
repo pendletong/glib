@@ -1,15 +1,9 @@
-import showtime
 import showtime/tests/should
 import gleam/option.{None, Some}
 import gleam/iterator
 import gleam/int
 import gleam/list
 import glib/map
-import gleam/io
-
-pub fn main() {
-  showtime.main()
-}
 
 pub fn new_test() {
   let a = map.new()

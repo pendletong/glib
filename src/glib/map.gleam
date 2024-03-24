@@ -444,10 +444,11 @@ fn find_gap(
   }
 }
 
-fn at(list: List(v), pos: Int) -> v {
-  let assert [r, ..] = list.split(list, pos).1
-  r
-}
+// Attempt at a faster list index view
+// fn at(list: List(v), pos: Int) -> v {
+//   let assert [r, ..] = list.split(list, pos).1
+//   r
+// }
 
 fn find_key(
   map: Map(value),
@@ -485,20 +486,21 @@ fn ret_index_and_value(index: Int, value: value) -> #(Int, value) {
   #(index, value)
 }
 
-fn rehash(map: Map(value), new_size: Int) -> Map(value) {
-  list.fold(
-    map.inner,
-    new_with_size_and_load(new_size, int.to_float(map.load) /. 100.0),
-    fn(new_map, el) {
-      case el {
-        Some(entry) -> {
-          put(new_map, entry.key, entry.value)
-        }
-        None -> new_map
-      }
-    },
-  )
-}
+// Naive rehash routine
+// fn rehash(map: Map(value), new_size: Int) -> Map(value) {
+//   list.fold(
+//     map.inner,
+//     new_with_size_and_load(new_size, int.to_float(map.load) /. 100.0),
+//     fn(new_map, el) {
+//       case el {
+//         Some(entry) -> {
+//           put(new_map, entry.key, entry.value)
+//         }
+//         None -> new_map
+//       }
+//     },
+//   )
+// }
 
 type RehashData(a) {
   RehashData(
