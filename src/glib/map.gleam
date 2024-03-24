@@ -10,7 +10,6 @@ import gleam/list
 import gleam/int
 import gleam/float
 import gleam/string
-import gleam/result
 import glib/hash
 import gleam/iterator
 
@@ -89,7 +88,7 @@ pub fn is_empty(map: Map(value)) -> Bool {
   size(map) == 0
 }
 
-/// Determines whether size of the map, i.e. the number of key/values
+/// Determines the size of the map, i.e. the number of key/values
 /// 
 /// ## Examples
 /// 
@@ -591,10 +590,16 @@ fn calc_hash(map_size: Int, key: String) -> #(Int, Int) {
   #(fix_hash(map_size, hash_value), hash_value)
 }
 
+/// Returns the internal storage size of the map
+/// This is mainly for testing use
 pub fn list_size(map: Map(value)) -> Int {
   list.length(map.inner)
 }
 
+/// Returns a count of the number of entries in the map
+/// This is used for testing to compare against the cached size
+/// Performs a full iteration of the list incrementing for all Some(_)
+/// entries
 pub fn full_count(map: Map(value)) -> Int {
   list.fold(map.inner, 0, fn(acc, e) {
     case e {
