@@ -549,10 +549,10 @@ fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
           True -> RehashData(..acc, duplicates: [en, ..acc.duplicates])
           False -> {
             RehashData(
-              list.append(
-                [Some(en.1), ..list.repeat(None, acc.index - { en.0 }.0 - 1)],
-                acc.new_map_list,
-              ),
+              [
+                Some(en.1),
+                ..prepend_none(acc.index - { en.0 }.0 - 1, acc.new_map_list)
+              ],
               acc.duplicates,
               { en.0 }.0,
               acc.count + 1,
@@ -577,6 +577,20 @@ fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
       put(acc, entry.key, entry.value)
     },
   )
+}
+
+fn prepend_none(times: Int, acc: List(Option(Entry(a)))) {
+  case times <= 0 {
+    True -> acc
+    False -> prepend_none(times - 1, [None, ..acc])
+  }
+}
+
+fn do_repeat(a: a, times: Int, acc: List(a)) -> List(a) {
+  case times <= 0 {
+    True -> acc
+    False -> do_repeat(a, times, [a, ..acc])
+  }
 }
 
 fn fix_hash(map_size: Int, hash: Int) -> Int {
