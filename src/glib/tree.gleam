@@ -4,6 +4,7 @@ import gleam/int
 import gleam/list
 import gleam/string
 import gleam/order.{type Order, Eq, Gt, Lt}
+import gleam/result
 
 pub opaque type Tree(value) {
   Tree(root: Option(TreeNode(value)), comparator: fn(value, value) -> Order)
@@ -129,6 +130,40 @@ fn do_remove(
           Some(TreeNode(..node, right: do_remove(tree, rightnode, value)))
         }
       }
+    }
+  }
+}
+
+pub fn size(tree: Tree(value)) -> Int {
+  get_size(0, tree.root)
+}
+
+fn get_size(size: Int, node: Option(TreeNode(value))) -> Int {
+  case node {
+    None -> size + 1
+    Some(tn) -> {
+      get_size(size, tn.left) + get_size(size, tn.right)
+    }
+  }
+}
+
+pub fn is_balanced(tree: Tree(value)) -> Bool {
+  case tree.root {
+    None -> True
+    Some(root) -> {
+      let left = get_height(1, root.left)
+      let right = get_height(1, root.right)
+      int.absolute_value(left - right)
+      <= result.unwrap(int.modulo(size(tree) - 1, 2), 0)
+    }
+  }
+}
+
+fn get_height(height: Int, node: Option(TreeNode(value))) -> Int {
+  case node {
+    None -> height
+    Some(tn) -> {
+      int.max(get_height(height + 1, tn.left), get_height(height + 1, tn.right))
     }
   }
 }
