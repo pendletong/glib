@@ -538,23 +538,28 @@ fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
         None -> acc
       }
     })
-    |> list.sort(fn(i1, i2) { int.compare({ i2.0 }.0, { i1.0 }.0) })
+    |> list.sort(fn(i1, i2) {
+      let #(#(hash1, _), _) = i1
+      let #(#(hash2, _), _) = i2
+      int.compare(hash2, hash1)
+    })
 
   let proc_list =
     list.fold(
       entries,
       RehashData([], [], new_size, 0),
       fn(acc: RehashData(value), en) {
-        case acc.index == { en.0 }.0 {
+        let #(#(hash, _), _) = en
+        case acc.index == hash {
           True -> RehashData(..acc, duplicates: [en, ..acc.duplicates])
           False -> {
             RehashData(
               [
                 Some(en.1),
-                ..prepend_none(acc.index - { en.0 }.0 - 1, acc.new_map_list)
+                ..prepend_none(acc.index - hash - 1, acc.new_map_list)
               ],
               acc.duplicates,
-              { en.0 }.0,
+              hash,
               acc.count + 1,
             )
           }
