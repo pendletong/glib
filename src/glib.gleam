@@ -1,13 +1,14 @@
 // import gleam/dict
 // import gleam/int
-// import gleam/io
+import gleam/io
+
 // import gleam/iterator
 // import gleam/list
 // import gleamy/bench
 // import glib/map
 
 pub fn main() {
-  todo
+  io.println("Hello world")
   // bench_at()
   // map_bench([0, 5, 10, 15, 18, 50, 100, 1000])
   // map_bench([8, 17, 35, 71, 143, 287, 1151])
