@@ -1,10 +1,10 @@
-import gleam/option.{type Option, None, Some}
-import gleam/io
 import gleam/int
+import gleam/io
 import gleam/list
-import gleam/string
+import gleam/option.{type Option, None, Some}
 import gleam/order.{type Order, Eq, Gt, Lt}
 import gleam/result
+import gleam/string
 
 pub opaque type Tree(value) {
   Tree(root: Option(TreeNode(value)), comparator: fn(value, value) -> Order)
