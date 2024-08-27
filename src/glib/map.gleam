@@ -5,13 +5,13 @@
 //// 
 //// Maps are unordered
 
-import gleam/option.{type Option, None, Some}
-import gleam/list
-import gleam/int
 import gleam/float
+import gleam/int
+import gleam/iterator
+import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import glib/hash
-import gleam/iterator
 
 const default_size = 11
 
@@ -106,6 +106,11 @@ pub fn size(map: Map(value)) -> Int {
   map.num_entries
 }
 
+fn get_at(list: List(value), pos: Int) -> value {
+  let assert [r, ..] = list.split(list, pos).1
+  r
+}
+
 /// Inserts a value into the map with the given key
 /// 
 /// Will replace value if key already exists
@@ -130,8 +135,8 @@ pub fn size(map: Map(value)) -> Int {
 pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
   let #(hash, original_hash) = calc_hash(map.size, key)
 
-  case list.at(map.inner, hash) {
-    Ok(Some(e)) if e.key == key -> {
+  case get_at(map.inner, hash) {
+    Some(e) if e.key == key -> {
       Map(
         insert_at(map.inner, hash, Some(Entry(key, value))),
         map.size,
@@ -174,9 +179,9 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
 /// 
 pub fn get(map: Map(value), key: String) -> Option(value) {
   let #(hash, _original_hash) = calc_hash(map.size, key)
-  case list.at(map.inner, hash) {
-    Ok(None) | Error(Nil) -> None
-    Ok(Some(e)) -> {
+  case get_at(map.inner, hash) {
+    None -> None
+    Some(e) -> {
       case e.key == key {
         True -> Some(e.value)
         False -> {
@@ -205,9 +210,9 @@ pub fn get(map: Map(value), key: String) -> Option(value) {
 pub fn contains_key(map: Map(value), key: String) -> Bool {
   let #(hash, _original_hash) = calc_hash(map.size, key)
 
-  case list.at(map.inner, hash) {
-    Ok(None) | Error(Nil) -> False
-    Ok(Some(e)) -> {
+  case get_at(map.inner, hash) {
+    None -> False
+    Some(e) -> {
       case e.key == key {
         True -> True
         False -> {
@@ -239,9 +244,9 @@ pub fn contains_key(map: Map(value), key: String) -> Bool {
 pub fn remove(map: Map(value), key: String) -> #(Option(value), Map(value)) {
   let #(hash, _original_hash) = calc_hash(map.size, key)
 
-  case list.at(map.inner, hash) {
-    Ok(None) | Error(Nil) -> #(None, map)
-    Ok(Some(e)) -> {
+  case get_at(map.inner, hash) {
+    None -> #(None, map)
+    Some(e) -> {
       case e.key == key {
         True -> do_remove(map, hash, e.value)
         False -> {
@@ -421,9 +426,9 @@ fn find_gap(
   last_position: Int,
   position: Int,
 ) -> #(Int, Bool) {
-  case list.at(map.inner, position) {
-    Ok(None) | Error(Nil) -> #(position, False)
-    Ok(Some(e)) -> {
+  case get_at(map.inner, position) {
+    None -> #(position, False)
+    Some(e) -> {
       case e.key == key {
         True -> #(position, True)
         False -> {
@@ -457,9 +462,9 @@ fn find_key(
   position: Int,
   ret_fn: fn(Int, value) -> ret_val,
 ) -> Option(ret_val) {
-  case list.at(map.inner, position) {
-    Ok(None) | Error(Nil) -> None
-    Ok(Some(e)) -> {
+  case get_at(map.inner, position) {
+    None -> None
+    Some(e) -> {
       case e.key == key {
         True -> Some(ret_fn(position, e.value))
         False -> {
