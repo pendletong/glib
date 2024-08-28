@@ -1,5 +1,8 @@
+import gleam/int
+import gleam/io
 import gleam/iterator
 import gleam/list
+import gleam/result
 import gleeunit/should
 import glib/treelist
 
@@ -26,20 +29,27 @@ pub fn add_test() {
   |> should.be_ok
   |> should.equal("Two")
 
-  treelist.new()
-  |> treelist.add("New")
-  |> should.be_ok
-  |> treelist.add("Two")
-  |> should.be_ok
-  |> treelist.add("Three")
-  |> should.be_ok
-  |> treelist.add("Four")
-  |> should.be_ok
-  |> treelist.add("Five")
-  |> should.be_ok
+  let list =
+    treelist.new()
+    |> treelist.add("New")
+    |> should.be_ok
+    |> treelist.add("Two")
+    |> should.be_ok
+    |> treelist.add("Three")
+    |> should.be_ok
+    |> treelist.add("Four")
+    |> should.be_ok
+    |> treelist.add("Five")
+    |> should.be_ok
+
+  list
   |> treelist.get(3)
   |> should.be_ok
   |> should.equal("Four")
+
+  list
+  |> treelist.size
+  |> should.equal(5)
 }
 
 pub fn insert_test() {
@@ -144,4 +154,71 @@ pub fn remove_test() {
   |> treelist.get(50)
   |> should.be_ok
   |> should.equal(51)
+}
+
+pub fn mass_test() {
+  let new_list =
+    iterator.range(1, 100_000)
+    |> iterator.try_fold(treelist.new(), fn(acc, i) {
+      treelist.insert(acc, 0, i)
+    })
+    |> should.be_ok
+  new_list |> treelist.size |> should.equal(100_000)
+
+  iterator.range(1, 100_000)
+  |> iterator.each(fn(i) {
+    treelist.get(new_list, i - 1) |> should.be_ok |> should.equal(100_001 - i)
+  })
+
+  let new_list =
+    iterator.range(1, 100_000)
+    |> iterator.try_fold(treelist.new(), fn(acc, i) { treelist.add(acc, i) })
+    |> should.be_ok
+  new_list |> treelist.size |> should.equal(100_000)
+
+  iterator.range(1, 100_000)
+  |> iterator.each(fn(i) {
+    treelist.get(new_list, i - 1) |> should.be_ok |> should.equal(i)
+  })
+
+  // found a binary tree stress test so try that here
+  let power = 16
+  let tlist =
+    iterator.range(power - 1, 0)
+    |> iterator.fold(
+      treelist.new() |> treelist.add(0) |> result.unwrap(treelist.new()),
+      fn(acc, i) {
+        let #(list, _j, _k) =
+          iterator.repeat(i)
+          |> iterator.fold_until(
+            #(acc, int.bitwise_shift_left(1, i), 1),
+            fn(acc2, i) {
+              let #(list, j, k) = acc2
+              let new_list = case treelist.insert(list, k, j) {
+                Ok(n) -> n
+                Error(_) -> {
+                  treelist.new()
+                }
+                // should throw an error soon thereafter
+              }
+              let j = j + int.bitwise_shift_left(2, i)
+              let k = k + 2
+              let ret = #(new_list, j, k)
+              case j < int.bitwise_shift_left(1, power) {
+                True -> list.Continue(ret)
+                False -> list.Stop(ret)
+              }
+              // panic
+            },
+          )
+        list
+      },
+    )
+
+  list.range(0, 63)
+  |> list.each(fn(i) {
+    treelist.get(tlist, i)
+    |> should.be_ok
+    |> should.equal(i)
+  })
 }
