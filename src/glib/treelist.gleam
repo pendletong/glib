@@ -1,17 +1,22 @@
+//// TreeLists are ordered sequence of elements stored in an efficient binary
+//// tree structure
+//// 
+//// New elements can be added at any index of the structure and will
+//// be stored efficiently with O(log n) complexity
+
 import gleam/bool
 import gleam/int
-import gleam/io
 import gleam/iterator
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order.{Eq, Gt, Lt}
 import gleam/result
 
-pub type TreeList(value) {
+pub opaque type TreeList(value) {
   TreeList(root: Node(value))
 }
 
-pub type Node(value) {
+pub opaque type Node(value) {
   Node(
     value: Option(value),
     height: Int,
@@ -29,14 +34,37 @@ fn new_node(value: value) -> Node(value) {
   Node(Some(value), 1, 1, Some(blank_node()), Some(blank_node()))
 }
 
+/// Creates an empty treelist
 pub fn new() -> TreeList(value) {
   TreeList(blank_node())
 }
 
+/// Returns the number of elements in the provided treelist
 pub fn size(list: TreeList(value)) -> Int {
   list.root.size
 }
 
+/// Returns the element at the specified position in the provided treelist
+/// 
+/// Returns an Error(Nil) if the index is outside the allowed range
+/// 
+/// Index is zero based
+/// 
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// let list = new()
+/// let assert Ok(new_list) = add(list, "Test")
+/// get(new_list, 0)
+/// // -> Ok("Test")
+/// ```
+/// 
+/// ```gleam
+/// new() |> get(0)
+/// // -> Error(Nil)
+/// ```
+/// 
 pub fn get(list: TreeList(value), index: Int) -> Result(value, Nil) {
   use <- bool.guard(index < 0 || index >= size(list), return: Error(Nil))
 
@@ -51,6 +79,24 @@ pub fn get(list: TreeList(value), index: Int) -> Result(value, Nil) {
   }
 }
 
+/// Updates the element at index specified in the provided treelist
+/// 
+/// Returns an Error(Nil) if the index is outside the allowed range
+/// 
+/// Index is zero based
+/// 
+/// Returns a new TreeList containing the updated node
+/// 
+/// ```gleam
+/// let list = new()
+/// let assert Ok(new_list) = add(list, "Test")
+/// get(new_list, 0)
+/// // -> Ok("Test")
+/// let assert Ok(new_list) = set(list, 0, "Updated")
+/// get(new_list, 0)
+/// // -> Ok("Updated")
+/// ```
+/// 
 pub fn set(
   list: TreeList(value),
   index: Int,
@@ -63,10 +109,43 @@ pub fn set(
   Ok(TreeList(new_root))
 }
 
+/// Adds an element to the end of the provided treelist
+/// i.e. insert at position size(list)
+/// 
+/// Returns a new TreeList containing the provided element
+/// 
+/// ```gleam
+/// let list = new()
+/// let assert Ok(new_list) = add(list, "Test")
+/// get(new_list, 0)
+/// // -> Ok("Test")
+/// ```
+/// 
 pub fn add(list: TreeList(value), value: value) -> Result(TreeList(value), Nil) {
   insert(list, size(list), value)
 }
 
+/// Inserts an element at the specified index in the provided treelist
+/// 
+/// Returns an Error(Nil) if the index is outside the allowed range
+/// 
+/// Index is zero based
+/// 
+/// Returns a new TreeList containing the provided element
+/// 
+/// ```gleam
+/// let list = new()
+/// let assert Ok(new_list) = insert(list, 0, "Test")
+/// get(new_list, 0)
+/// // -> Ok("Test")
+/// ```
+/// 
+/// ```gleam
+/// let list = new()
+/// insert(list, 1, "Test")
+/// // -> Error(Nil)
+/// ```
+/// 
 pub fn insert(
   list: TreeList(value),
   index: Int,
@@ -79,6 +158,29 @@ pub fn insert(
   Ok(TreeList(new_root))
 }
 
+/// Removes an element at the specified index in the provided treelist
+/// 
+/// Returns an Error(Nil) if the index is outside the allowed range
+/// 
+/// Index is zero based
+/// 
+/// Returns a tuple containing the value at the specified index and the new TreeList
+/// 
+/// ```gleam
+/// let list = new()
+/// let assert Ok(new_list) = insert(list, 0, "Test")
+/// get(new_list, 0)
+/// // -> Ok("Test")
+/// remove(new_list, 0)
+/// // -> #("Test", TreeList(..))
+/// ```
+/// 
+/// ```gleam
+/// let list = new()
+/// remove(list, 1)
+/// // -> Error(Nil)
+/// ```
+/// 
 pub fn remove(
   list: TreeList(value),
   index: Int,
@@ -92,7 +194,17 @@ pub fn remove(
   Ok(#(value, TreeList(new_root)))
 }
 
-pub fn to_list(list: TreeList(value)) -> Result(List(value), Nil) {
+/// Converts a TreeList into a standard Gleam list
+/// 
+/// ```gleam
+/// let list = new()
+/// let assert Ok(new_list) = insert(list, 0, "Test")
+/// let assert Ok(new_list2) = insert(new_list, 1, "Second")
+/// to_list(new_list2)
+/// // -> ["Test", "Second"]
+/// ```
+/// 
+pub fn to_list(list: TreeList(value)) -> List(value) {
   case size(list) {
     0 -> Ok([])
     n -> {
@@ -103,11 +215,28 @@ pub fn to_list(list: TreeList(value)) -> Result(List(value), Nil) {
       })
     }
   }
+  // This needs to be reimplemented to iterate the tree and
+  // avoid the potential, but in theory impossible, Error(Nil)
+  // returned by the get fn
+  |> result.lazy_unwrap(fn() { panic })
 }
 
+/// Takes a list and returns a new TreeList containing all the
+/// elements from the list in the same order as that list
+/// 
+/// Returns an Error(Nil) in the case that the list is too large
+/// 
+/// ```gleam
+/// let list = from_list([1,2,3])
+/// get(list, 1)
+/// // -> Ok(2)
+/// ```
+/// 
 pub fn from_list(list: List(value)) -> Result(TreeList(value), Nil) {
   list.try_fold(list, new(), fn(acc, val) { add(acc, val) })
 }
+
+// Internal functions
 
 fn remove_node_at(node: Node(value), index: Int) -> Result(Node(value), Nil) {
   use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
