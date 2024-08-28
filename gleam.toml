@@ -20,5 +20,4 @@ repository = { type = "github", user = "pendletong", repo = "glib" }
 gleam_stdlib = "~> 0.34 or ~> 1.0"
 
 [dev-dependencies]
-gleamy_bench = "~> 0.4"
 gleeunit = "~> 1.0"
