@@ -204,21 +204,32 @@ pub fn remove(
 /// // -> ["Test", "Second"]
 /// ```
 /// 
-pub fn to_list(list: TreeList(value)) -> List(value) {
-  case size(list) {
-    0 -> Ok([])
-    n -> {
-      iterator.range(n - 1, 0)
-      |> iterator.try_fold([], fn(acc, i) {
-        use el <- result.try(get(list, i))
-        Ok([el, ..acc])
-      })
-    }
-  }
-  // This needs to be reimplemented to iterate the tree and
-  // avoid the potential, but in theory impossible, Error(Nil)
-  // returned by the get fn
-  |> result.lazy_unwrap(fn() { panic })
+pub fn to_list(l: TreeList(value)) -> List(value) {
+  do_to_list(l.root)
+}
+
+fn do_to_list(node: Node(value)) -> List(value) {
+  let left = option.lazy_unwrap(node.left, fn() { blank_node() })
+  let right = option.lazy_unwrap(node.right, fn() { blank_node() })
+
+  list.append(
+    case left {
+      Node(None, 0, 0, None, None) -> []
+      _ -> do_to_list(left)
+    },
+    [
+      case node.value {
+        None -> panic
+        Some(v) -> v
+      },
+      ..{
+        case right {
+          Node(None, 0, 0, None, None) -> []
+          _ -> do_to_list(right)
+        }
+      }
+    ],
+  )
 }
 
 /// Takes a list and returns a new TreeList containing all the
