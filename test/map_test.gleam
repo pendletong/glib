@@ -1,8 +1,8 @@
-import gleeunit/should
-import gleam/option.{None, Some}
-import gleam/iterator
 import gleam/int
+import gleam/iterator
 import gleam/list
+import gleam/option.{None, Some}
+import gleeunit/should
 import glib/map
 
 pub fn new_test() {
