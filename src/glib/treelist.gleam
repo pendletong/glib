@@ -1,7 +1,10 @@
 import gleam/bool
 import gleam/int
 import gleam/io
+import gleam/iterator
+import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/order.{Eq, Gt, Lt}
 import gleam/result
 
 pub type TreeList(value) {
@@ -60,38 +63,118 @@ pub fn set(
   Ok(TreeList(new_root))
 }
 
-pub fn add(
+pub fn add(list: TreeList(value), value: value) -> Result(TreeList(value), Nil) {
+  insert(list, size(list), value)
+}
+
+pub fn insert(
   list: TreeList(value),
   index: Int,
   value: value,
 ) -> Result(TreeList(value), Nil) {
-  use <- bool.guard(
-    when: index < 0 || index > list.root.size,
-    return: Error(Nil),
-  )
+  use <- bool.guard(when: index < 0 || index > size(list), return: Error(Nil))
   use <- bool.guard(when: index > get_max_int(), return: Error(Nil))
 
   use new_root <- result.try(insert_node_at(list.root, index, value))
   Ok(TreeList(new_root))
 }
 
+pub fn remove(
+  list: TreeList(value),
+  index: Int,
+) -> Result(#(value, TreeList(value)), Nil) {
+  use <- bool.guard(when: index < 0 || index > size(list), return: Error(Nil))
+
+  use value <- result.try(get(list, index))
+
+  use new_root <- result.try(remove_node_at(list.root, index))
+
+  Ok(#(value, TreeList(new_root)))
+}
+
+pub fn to_list(list: TreeList(value)) -> Result(List(value), Nil) {
+  case size(list) {
+    0 -> Ok([])
+    n -> {
+      iterator.range(n - 1, 0)
+      |> iterator.try_fold([], fn(acc, i) {
+        use el <- result.try(get(list, i))
+        Ok([el, ..acc])
+      })
+    }
+  }
+}
+
+pub fn from_list(list: List(value)) -> Result(TreeList(value), Nil) {
+  list.try_fold(list, new(), fn(acc, val) { add(acc, val) })
+}
+
+fn remove_node_at(node: Node(value), index: Int) -> Result(Node(value), Nil) {
+  use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
+  let left = option.lazy_unwrap(node.left, fn() { blank_node() })
+
+  use #(res, rebalance) <- result.try(case int.compare(index, left.size) {
+    Lt -> {
+      use new_left <- result.try(remove_node_at(left, index))
+      Ok(#(Node(..node, left: Some(new_left)), True))
+    }
+    Gt -> {
+      let right = option.lazy_unwrap(node.right, fn() { blank_node() })
+      use new_right <- result.try(remove_node_at(right, index - left.size - 1))
+      Ok(#(Node(..node, right: Some(new_right)), True))
+    }
+    Eq -> {
+      let right = option.lazy_unwrap(node.right, fn() { blank_node() })
+      case left, right {
+        Node(None, 0, 0, None, None), Node(None, 0, 0, None, None) -> {
+          Ok(#(blank_node(), False))
+        }
+        _, Node(None, 0, 0, None, None) -> {
+          Ok(#(left, False))
+        }
+        Node(None, 0, 0, None, None), _ -> {
+          Ok(#(right, False))
+        }
+        _, _ -> {
+          let temp = find_ultimate_left(right)
+          use new_right <- result.try(remove_node_at(right, 0))
+          Ok(#(Node(..node, right: Some(new_right), value: temp.value), True))
+        }
+      }
+    }
+  })
+  case rebalance {
+    False -> Ok(res)
+    True -> {
+      case recalculate(res) {
+        Error(_) -> Error(Nil)
+        Ok(node) -> balance(node)
+      }
+    }
+  }
+}
+
+fn find_ultimate_left(node: Node(value)) -> Node(value) {
+  case node.left {
+    Some(Node(None, 0, 0, None, None)) -> node
+    Some(left) -> find_ultimate_left(left)
+    None -> panic
+  }
+}
+
 fn get_node_at(node: Node(value), index: Int) -> Result(Node(value), Nil) {
   use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
 
   let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-  case index < left.size {
-    True -> {
+  case int.compare(index, left.size) {
+    Lt -> {
       get_node_at(left, index)
     }
-    False -> {
-      case index > left.size {
-        True -> {
-          let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-          get_node_at(right, index - left.size - 1)
-        }
-        False -> Ok(node)
-      }
+    Gt -> {
+      let right = option.lazy_unwrap(node.right, fn() { blank_node() })
+      get_node_at(right, index - left.size - 1)
     }
+    Eq -> Ok(node)
   }
 }
 
@@ -103,26 +186,22 @@ fn set_node_at(
   use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
 
   let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-  case index < left.size {
-    True -> {
+  case int.compare(index, left.size) {
+    Lt -> {
       use new_left <- result.try(set_node_at(left, index, value))
 
       Ok(Node(..node, left: Some(new_left)))
     }
-    False -> {
-      case index > left.size {
-        True -> {
-          let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-          use new_right <- result.try(set_node_at(
-            right,
-            index - left.size - 1,
-            value,
-          ))
-          Ok(Node(..node, right: Some(new_right)))
-        }
-        False -> Ok(Node(..node, value: Some(value)))
-      }
+    Gt -> {
+      let right = option.lazy_unwrap(node.right, fn() { blank_node() })
+      use new_right <- result.try(set_node_at(
+        right,
+        index - left.size - 1,
+        value,
+      ))
+      Ok(Node(..node, right: Some(new_right)))
     }
+    Eq -> Ok(Node(..node, value: Some(value)))
   }
 }
 
@@ -138,12 +217,12 @@ fn insert_node_at(
       Node(None, 0, 0, None, None) -> Ok(new_node(value))
       _ -> {
         let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-        case index <= left.size {
-          True -> {
+        case int.compare(index, left.size) {
+          Lt | Eq -> {
             use new_left <- result.try(insert_node_at(left, index, value))
             Ok(Node(..node, left: Some(new_left)))
           }
-          False -> {
+          Gt -> {
             let right = option.lazy_unwrap(node.right, fn() { blank_node() })
             use new_right <- result.try(insert_node_at(
               right,
