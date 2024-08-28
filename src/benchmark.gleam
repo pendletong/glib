@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/int
 import gleam/iterator
 import gleam/list
+import gleam/result
 import glib/map
 import glib/treelist
 import glychee/benchmark
@@ -14,6 +15,32 @@ pub fn main() {
 
   map_benchmark()
   list_benchmark()
+  list_iterator_benchmark()
+}
+
+fn list_iterator_benchmark() {
+  benchmark.run(
+    [
+      benchmark.Function(label: "iterator", callable: fn(test_data) {
+        fn() {
+          treelist.to_iterator(test_data)
+          |> iterator.to_list
+        }
+      }),
+    ],
+    [
+      benchmark.Data(label: "100 items", data: {
+        list.range(0, 99)
+        |> treelist.from_list
+        |> result.unwrap(treelist.new())
+      }),
+      benchmark.Data(label: "10000 items", data: {
+        list.range(0, 9999)
+        |> treelist.from_list
+        |> result.unwrap(treelist.new())
+      }),
+    ],
+  )
 }
 
 fn list_benchmark() {

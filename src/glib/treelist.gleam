@@ -9,6 +9,7 @@
 
 import gleam/bool
 import gleam/int
+import gleam/iterator.{type Iterator, Done, Next}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order.{Eq, Gt, Lt}
@@ -209,6 +210,68 @@ pub fn to_list(l: TreeList(value)) -> List(value) {
   do_to_list(l.root)
 }
 
+/// Takes a list and returns a new TreeList containing all the
+/// elements from the list in the same order as that list
+/// 
+/// Returns an Error(Nil) in the case that the list is too large
+/// 
+/// ```gleam
+/// let list = from_list([1,2,3])
+/// get(list, 1)
+/// // -> Ok(2)
+/// ```
+/// 
+pub fn from_list(list: List(value)) -> Result(TreeList(value), Nil) {
+  list.try_fold(list, new(), fn(acc, val) { add(acc, val) })
+}
+
+/// Builds a list of a given value a given number of times.
+///
+/// ## Examples
+///
+/// ```gleam
+/// repeat("a", times: 0)
+/// // -> treelist.new()
+/// ```
+///
+/// ```gleam
+/// repeat("a", times: 5)
+/// |> to_list
+/// // -> ["a", "a", "a", "a", "a"]
+/// ```
+///
+pub fn repeat(item a: a, times times: Int) -> Result(TreeList(a), Nil) {
+  do_repeat(a, times, new())
+}
+
+/// Creates an iterator that yields each element from the given treelist.
+///
+///
+/// ```gleam
+/// to_iterator(treelist.from_list([1, 2, 3, 4]))
+/// |> to_list
+/// // -> [1, 2, 3, 4]
+/// ```
+///
+pub fn to_iterator(tlist: TreeList(value)) -> Iterator(value) {
+  let stack = #(list.reverse(init_stack(tlist.root, 0)), 0)
+  let yield = fn(acc: #(List(Node(value)), Int)) {
+    case acc {
+      #([], _) -> Done
+      #([node, ..rest], index) -> {
+        let right = option.lazy_unwrap(node.right, fn() { blank_node() })
+        let rest = list.append(list.reverse(get_left_stack(right)), rest)
+        let index = index + 1
+        Next(option.lazy_unwrap(node.value, fn() { panic }), #(rest, index))
+      }
+    }
+  }
+
+  iterator.unfold(stack, yield)
+}
+
+// Internal functions
+
 fn do_to_list(node: Node(value)) -> List(value) {
   let left = option.lazy_unwrap(node.left, fn() { blank_node() })
   let right = option.lazy_unwrap(node.right, fn() { blank_node() })
@@ -232,23 +295,6 @@ fn do_to_list(node: Node(value)) -> List(value) {
     ],
   )
 }
-
-/// Takes a list and returns a new TreeList containing all the
-/// elements from the list in the same order as that list
-/// 
-/// Returns an Error(Nil) in the case that the list is too large
-/// 
-/// ```gleam
-/// let list = from_list([1,2,3])
-/// get(list, 1)
-/// // -> Ok(2)
-/// ```
-/// 
-pub fn from_list(list: List(value)) -> Result(TreeList(value), Nil) {
-  list.try_fold(list, new(), fn(acc, val) { add(acc, val) })
-}
-
-// Internal functions
 
 fn remove_node_at(node: Node(value), index: Int) -> Result(Node(value), Nil) {
   use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
@@ -514,4 +560,47 @@ fn get_balance(left: Node(_), right: Node(_)) -> Int {
 
 fn get_max_int() -> Int {
   999_999
+}
+
+fn do_repeat(a: a, times: Int, acc: TreeList(a)) -> Result(TreeList(a), Nil) {
+  case times <= 0 {
+    True -> Ok(acc)
+    False ->
+      case insert(acc, 0, a) {
+        Error(_) -> Error(Nil)
+        Ok(new_list) -> do_repeat(a, times - 1, new_list)
+      }
+  }
+}
+
+fn get_left_stack(node: Node(value)) -> List(Node(value)) {
+  case node {
+    Node(None, 0, 0, None, None) -> []
+    _ -> {
+      let left = option.lazy_unwrap(node.left, fn() { blank_node() })
+      [node, ..get_left_stack(left)]
+    }
+  }
+}
+
+fn init_stack(node: Node(value), index: Int) -> List(Node(value)) {
+  case node {
+    Node(None, 0, 0, None, None) -> []
+    _ -> {
+      let left = option.lazy_unwrap(node.left, fn() { blank_node() })
+      case int.compare(index, left.size) {
+        Eq -> {
+          [node]
+        }
+        Lt -> {
+          [node, ..init_stack(left, index)]
+        }
+        Gt -> {
+          let index = index - left.size + 1
+          let right = option.lazy_unwrap(node.right, fn() { blank_node() })
+          init_stack(right, index)
+        }
+      }
+    }
+  }
 }

@@ -222,3 +222,20 @@ pub fn mass_test() {
     |> should.equal(i)
   })
 }
+
+pub fn repeat_test() {
+  treelist.repeat(999, 5)
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([999, 999, 999, 999, 999])
+}
+
+pub fn to_iterator_test() {
+  let l = list.range(0, 99)
+  l
+  |> treelist.from_list
+  |> should.be_ok
+  |> treelist.to_iterator
+  |> iterator.to_list
+  |> should.equal(l)
+}
