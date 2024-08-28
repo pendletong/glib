@@ -9,7 +9,6 @@
 
 import gleam/bool
 import gleam/int
-import gleam/iterator
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order.{Eq, Gt, Lt}
@@ -156,7 +155,6 @@ pub fn insert(
 ) -> Result(TreeList(value), Nil) {
   use <- bool.guard(when: index < 0 || index > size(list), return: Error(Nil))
   use <- bool.guard(when: index > get_max_int(), return: Error(Nil))
-
   use new_root <- result.try(insert_node_at(list.root, index, value))
   Ok(TreeList(new_root))
 }
@@ -421,12 +419,13 @@ fn balance(node: Node(value)) -> Result(Node(value), Nil) {
 
   let result = case balance {
     -2 -> {
+      let left_balance = balance_of(left)
       use <- bool.guard(
-        when: int.absolute_value(balance_of(left)) > 1,
+        when: int.absolute_value(left_balance) > 1,
         return: Error(Nil),
       )
 
-      use node <- result.try(case balance_of(left) {
+      use node <- result.try(case left_balance {
         1 -> {
           use rotated_left <- result.try(rotate_left(left))
           Ok(Node(..node, left: Some(rotated_left)))
@@ -436,15 +435,16 @@ fn balance(node: Node(value)) -> Result(Node(value), Nil) {
       rotate_right(node)
     }
     2 -> {
+      let right_balance = balance_of(right)
       use <- bool.guard(
-        when: int.absolute_value(balance_of(right)) > 1,
+        when: int.absolute_value(right_balance) > 1,
         return: Error(Nil),
       )
 
-      use node <- result.try(case balance_of(right) {
+      use node <- result.try(case right_balance {
         -1 -> {
           use rotated_right <- result.try(rotate_right(right))
-          Ok(Node(..node, left: Some(rotated_right)))
+          Ok(Node(..node, right: Some(rotated_right)))
         }
         _ -> Ok(node)
       })
