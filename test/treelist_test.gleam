@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/iterator
 import gleam/list
 import gleeunit/should
@@ -97,7 +96,6 @@ pub fn to_list_test() {
     |> should.be_ok
   })
   |> treelist.to_list
-  |> should.be_ok
   |> should.equal(["One", "Two", "Three", "Four", "Five"])
 }
 
@@ -125,7 +123,6 @@ pub fn from_list_test() {
   treelist.from_list(l)
   |> should.be_ok
   |> treelist.to_list
-  |> should.be_ok
   |> should.equal(l)
 }
 
