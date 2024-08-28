@@ -3,6 +3,9 @@
 //// 
 //// New elements can be added at any index of the structure and will
 //// be stored efficiently with O(log n) complexity
+//// 
+//// Based on https://en.wikipedia.org/wiki/AVL_tree
+//// 
 
 import gleam/bool
 import gleam/int
