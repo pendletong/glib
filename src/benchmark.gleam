@@ -146,8 +146,11 @@ fn map_benchmark() {
         label: "map insert",
         callable: fn(test_data: List(String)) {
           fn() {
+            let new_map = result.lazy_unwrap(map.new(), fn() { panic })
             test_data
-            |> list.fold(map.new(), fn(acc, i) { map.put(acc, i, i) })
+            |> list.fold(new_map, fn(acc, i) {
+              result.unwrap(map.put(acc, i, i), new_map)
+            })
             Nil
           }
         },
