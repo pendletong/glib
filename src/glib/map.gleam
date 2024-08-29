@@ -12,6 +12,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import glib/hash
+import glib/treelist.{type TreeList}
 
 const default_size = 11
 
@@ -22,7 +23,12 @@ type Entry(value) {
 }
 
 pub opaque type Map(value) {
-  Map(inner: List(Option(Entry(value))), size: Int, load: Int, num_entries: Int)
+  Map(
+    inner: TreeList(Option(Entry(value))),
+    size: Int,
+    load: Int,
+    num_entries: Int,
+  )
 }
 
 /// Creates an empty map
@@ -58,7 +64,7 @@ pub fn new_with_size_and_load(size: Int, load: Float) -> Map(value) {
     True -> 1
     False -> size
   }
-  Map(list.repeat(None, size), size, float.round(load *. 100.0), 0)
+  Map(treelist.repeat(None, size), size, float.round(load *. 100.0), 0)
 }
 
 /// Creates a new empty map with the same sizing/loading properties as the
