@@ -29,6 +29,7 @@ pub opaque type Map(value) {
     size: Int,
     load: Int,
     num_entries: Int,
+    resizing: Bool,
   )
 }
 
@@ -68,7 +69,7 @@ pub fn new_with_size_and_load(size: Int, load: Float) -> Result(Map(value), Nil)
     False -> size
   }
   use backing_list <- result.try(treelist.repeat(None, size))
-  Ok(Map(backing_list, size, float.round(load), 0))
+  Ok(Map(backing_list, size, float.round(load), 0, False))
 }
 
 /// Creates a new empty map with the same sizing/loading properties as the
@@ -308,12 +309,14 @@ pub fn remove(
 /// ```
 /// 
 pub fn keys(map: Map(value)) -> List(String) {
-  list.filter_map(treelist.to_list(map.inner), fn(e: Option(Entry(value))) {
+  treelist.to_iterator(map.inner)
+  |> iterator.filter_map(fn(e: Option(Entry(value))) {
     case e {
       None -> Error(Nil)
       Some(en) -> Ok(en.key)
     }
   })
+  |> iterator.to_list
 }
 
 /// Returns a list of the values contained in the map
@@ -331,12 +334,14 @@ pub fn keys(map: Map(value)) -> List(String) {
 /// ```
 /// 
 pub fn values(map: Map(value)) -> List(value) {
-  list.filter_map(treelist.to_list(map.inner), fn(e: Option(Entry(value))) {
+  treelist.to_iterator(map.inner)
+  |> iterator.filter_map(fn(e: Option(Entry(value))) {
     case e {
       None -> Error(Nil)
       Some(en) -> Ok(en.value)
     }
   })
+  |> iterator.to_list
 }
 
 /// Returns a list of the tuples #(key, value) contained in the map
@@ -354,12 +359,14 @@ pub fn values(map: Map(value)) -> List(value) {
 /// ```
 /// 
 pub fn entries(map: Map(value)) -> List(#(String, value)) {
-  list.filter_map(treelist.to_list(map.inner), fn(e: Option(Entry(value))) {
+  treelist.to_iterator(map.inner)
+  |> iterator.filter_map(fn(e: Option(Entry(value))) {
     case e {
       None -> Error(Nil)
       Some(en) -> Ok(#(en.key, en.value))
     }
   })
+  |> iterator.to_list
 }
 
 /// Returns a string representation of the passed map
@@ -381,18 +388,18 @@ pub fn to_string(
   map: Map(value),
   value_to_string: fn(value) -> String,
 ) -> Result(String, Nil) {
-  let entries = treelist.to_list(map.inner)
-
   Ok(
     "{"
     <> string.join(
-      list.filter_map(entries, fn(opt) {
-        case opt {
-          None -> Error(opt)
-          Some(e) ->
-            Ok("\"" <> e.key <> "\"" <> ":" <> value_to_string(e.value))
-        }
-      }),
+      treelist.to_iterator(map.inner)
+        |> iterator.filter_map(fn(opt) {
+          case opt {
+            None -> Error(opt)
+            Some(e) ->
+              Ok("\"" <> e.key <> "\"" <> ":" <> value_to_string(e.value))
+          }
+        })
+        |> iterator.to_list,
       with: ",",
     )
     <> "}",
@@ -420,13 +427,16 @@ fn check_capacity(
   map: Map(value),
   original_hash: Int,
 ) -> Result(#(Map(value), Option(Int)), Nil) {
-  case map.num_entries >= { map.size * map.load / 100 } {
-    True -> {
+  case map.resizing, map.num_entries >= { map.size * map.load / 100 } {
+    False, True -> {
       use new_map <- result.try(basic_rehash(map, map.size * 2 + 1))
 
-      Ok(#(new_map, Some(fix_hash(new_map.size, original_hash))))
+      Ok(#(
+        Map(..new_map, resizing: False),
+        Some(fix_hash(new_map.size, original_hash)),
+      ))
     }
-    _ -> Ok(#(map, None))
+    _, _ -> Ok(#(map, None))
   }
 }
 
@@ -608,7 +618,7 @@ fn basic_rehash(map: Map(value), new_size: Int) -> Result(Map(value), Nil) {
   ))
 
   treelist.to_iterator(map.inner)
-  |> iterator.try_fold(new_map, fn(map, entry) {
+  |> iterator.try_fold(Map(..new_map, resizing: True), fn(map, entry) {
     case entry {
       Some(entry) -> put(map, entry.key, entry.value)
       None -> Ok(map)
