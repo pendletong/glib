@@ -10,6 +10,7 @@ import gleam/int
 import gleam/iterator
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/string
 import glib/hash
 import glib/treelist.{type TreeList}
@@ -39,13 +40,13 @@ pub opaque type Map(value) {
 /// For example, if the loading factor was 0.5 then when one half of the backing
 /// list is populated, the next addition to the Map will trigger a resize to
 /// ensure the map has usable space
-pub fn new() -> Map(value) {
+pub fn new() -> Result(Map(value), Nil) {
   new_with_size(default_size)
 }
 
 /// Creates an empty map with specified size
 /// The loading factor is set to default
-pub fn new_with_size(size: Int) -> Map(value) {
+pub fn new_with_size(size: Int) -> Result(Map(value), Nil) {
   //    glimt.info(log, "Creating Map of size "<>int.to_string(size))
   new_with_size_and_load(size, default_load)
 }
@@ -55,21 +56,24 @@ pub fn new_with_size(size: Int) -> Map(value) {
 /// at which point the backing list is resized
 /// This should be kept around 0.6-0.8 to avoid either excessive resizing or
 /// excessive key hash collisions
-pub fn new_with_size_and_load(size: Int, load: Float) -> Map(value) {
-  let load = case load >=. 1.0 || load <. 0.0 {
-    True -> default_load
-    False -> load
-  }
+pub fn new_with_size_and_load(size: Int, load: Float) -> Result(Map(value), Nil) {
+  let load =
+    case load >=. 1.0 || load <. 0.0 {
+      True -> default_load
+      False -> load
+    }
+    *. 100.0
   let size = case size < 1 {
     True -> 1
     False -> size
   }
-  Map(treelist.repeat(None, size), size, float.round(load *. 100.0), 0)
+  use backing_list <- result.try(treelist.repeat(None, size))
+  Ok(Map(backing_list, size, float.round(load), 0))
 }
 
 /// Creates a new empty map with the same sizing/loading properties as the
 /// passed map
-pub fn clear(previous_map: Map(value)) -> Map(value) {
+pub fn clear(previous_map: Map(value)) -> Result(Map(value), Nil) {
   new_with_size_and_load(
     previous_map.size,
     int.to_float(previous_map.load) /. 100.0,
@@ -112,11 +116,6 @@ pub fn size(map: Map(value)) -> Int {
   map.num_entries
 }
 
-fn get_at(list: List(value), pos: Int) -> value {
-  let assert [r, ..] = list.split(list, pos).1
-  r
-}
-
 /// Inserts a value into the map with the given key
 /// 
 /// Will replace value if key already exists
@@ -138,33 +137,46 @@ fn get_at(list: List(value), pos: Int) -> value {
 /// // -> {"key":123}
 /// ```
 /// 
-pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
+pub fn put(
+  map: Map(value),
+  key: String,
+  value: value,
+) -> Result(Map(value), Nil) {
   let #(hash, original_hash) = calc_hash(map.size, key)
 
-  case get_at(map.inner, hash) {
+  use entry <- result.try(treelist.get(map.inner, hash))
+  use #(map, entry_pos, overwrite) <- result.try(case entry {
     Some(e) if e.key == key -> {
-      Map(
-        insert_at(map.inner, hash, Some(Entry(key, value))),
-        map.size,
-        map.load,
-        map.num_entries,
-      )
+      Ok(#(map, hash, True))
     }
     _ -> {
-      let #(map, new_hash) = check_capacity(map, original_hash)
+      use #(map, new_hash) <- result.try(check_capacity(map, original_hash))
       let new_hash = option.unwrap(new_hash, hash)
-      let #(position, overwrite) =
-        find_gap(map, key, { new_hash + 1 } % map.size, new_hash)
-      Map(
-        ..map,
-        inner: insert_at(map.inner, position, Some(Entry(key, value))),
-        num_entries: case overwrite {
-          True -> map.num_entries
-          False -> map.num_entries + 1
-        },
-      )
+
+      use #(entry_pos, overwrite) <- result.try(find_gap(
+        map,
+        key,
+        { new_hash + 1 } % map.size,
+        new_hash,
+      ))
+      Ok(#(map, entry_pos, overwrite))
     }
-  }
+  })
+  use inner <- result.try(treelist.set(
+    map.inner,
+    entry_pos,
+    Some(Entry(key, value)),
+  ))
+  Ok(
+    Map(
+      ..map,
+      inner: inner,
+      num_entries: case overwrite {
+        True -> map.num_entries
+        False -> map.num_entries + 1
+      },
+    ),
+  )
 }
 
 /// Retrieves the option wrapped value from the map for the stored key
@@ -183,13 +195,14 @@ pub fn put(map: Map(value), key: String, value: value) -> Map(value) {
 /// // -> None
 /// ```
 /// 
-pub fn get(map: Map(value), key: String) -> Option(value) {
+pub fn get(map: Map(value), key: String) -> Result(Option(value), Nil) {
   let #(hash, _original_hash) = calc_hash(map.size, key)
-  case get_at(map.inner, hash) {
-    None -> None
+  use entry <- result.try(treelist.get(map.inner, hash))
+  case entry {
+    None -> Ok(None)
     Some(e) -> {
       case e.key == key {
-        True -> Some(e.value)
+        True -> Ok(Some(e.value))
         False -> {
           find_key(map, key, { hash + 1 } % map.size, hash, ret_value)
         }
@@ -216,14 +229,17 @@ pub fn get(map: Map(value), key: String) -> Option(value) {
 pub fn contains_key(map: Map(value), key: String) -> Bool {
   let #(hash, _original_hash) = calc_hash(map.size, key)
 
-  case get_at(map.inner, hash) {
-    None -> False
-    Some(e) -> {
+  case treelist.get(map.inner, hash) {
+    Error(_) | Ok(None) -> False
+    Ok(Some(e)) -> {
       case e.key == key {
         True -> True
         False -> {
           option.unwrap(
-            find_key(map, key, { hash + 1 } % map.size, hash, ret_exists),
+            result.unwrap(
+              find_key(map, key, { hash + 1 } % map.size, hash, ret_exists),
+              None,
+            ),
             False,
           )
         }
@@ -247,25 +263,28 @@ pub fn contains_key(map: Map(value), key: String) -> Bool {
 /// new() |> put("key", "value") |> remove("non-existent")
 /// // -> #(None, {"key": "value"})
 /// ```
-pub fn remove(map: Map(value), key: String) -> #(Option(value), Map(value)) {
+pub fn remove(
+  map: Map(value),
+  key: String,
+) -> Result(#(Option(value), Map(value)), Nil) {
   let #(hash, _original_hash) = calc_hash(map.size, key)
 
-  case get_at(map.inner, hash) {
-    None -> #(None, map)
+  use entry <- result.try(treelist.get(map.inner, hash))
+  case entry {
+    None -> Ok(#(None, map))
     Some(e) -> {
       case e.key == key {
         True -> do_remove(map, hash, e.value)
         False -> {
-          let item =
-            find_key(
-              map,
-              key,
-              { hash + 1 } % map.size,
-              hash,
-              ret_index_and_value,
-            )
+          use item <- result.try(find_key(
+            map,
+            key,
+            { hash + 1 } % map.size,
+            hash,
+            ret_index_and_value,
+          ))
           case item {
-            None -> #(None, map)
+            None -> Ok(#(None, map))
             Some(#(index, value)) -> do_remove(map, index, value)
           }
         }
@@ -289,7 +308,7 @@ pub fn remove(map: Map(value), key: String) -> #(Option(value), Map(value)) {
 /// ```
 /// 
 pub fn keys(map: Map(value)) -> List(String) {
-  list.filter_map(map.inner, fn(e: Option(Entry(value))) {
+  list.filter_map(treelist.to_list(map.inner), fn(e: Option(Entry(value))) {
     case e {
       None -> Error(Nil)
       Some(en) -> Ok(en.key)
@@ -312,7 +331,7 @@ pub fn keys(map: Map(value)) -> List(String) {
 /// ```
 /// 
 pub fn values(map: Map(value)) -> List(value) {
-  list.filter_map(map.inner, fn(e: Option(Entry(value))) {
+  list.filter_map(treelist.to_list(map.inner), fn(e: Option(Entry(value))) {
     case e {
       None -> Error(Nil)
       Some(en) -> Ok(en.value)
@@ -335,7 +354,7 @@ pub fn values(map: Map(value)) -> List(value) {
 /// ```
 /// 
 pub fn entries(map: Map(value)) -> List(#(String, value)) {
-  list.filter_map(map.inner, fn(e: Option(Entry(value))) {
+  list.filter_map(treelist.to_list(map.inner), fn(e: Option(Entry(value))) {
     case e {
       None -> Error(Nil)
       Some(en) -> Ok(#(en.key, en.value))
@@ -361,51 +380,35 @@ pub fn entries(map: Map(value)) -> List(#(String, value)) {
 pub fn to_string(
   map: Map(value),
   value_to_string: fn(value) -> String,
-) -> String {
-  "{"
-  <> string.join(
-    list.filter_map(map.inner, fn(opt) {
-      case opt {
-        None -> Error(opt)
-        Some(e) -> Ok("\"" <> e.key <> "\"" <> ":" <> value_to_string(e.value))
-      }
-    }),
-    with: ",",
-  )
-  <> "}"
-}
+) -> Result(String, Nil) {
+  let entries = treelist.to_list(map.inner)
 
-fn insert_at(
-  map_list: List(Option(Entry(value))),
-  at: Int,
-  entry: Option(Entry(value)),
-) -> List(Option(Entry(value))) {
-  let #(split_left, split_right) = list.split(map_list, at)
-  list.concat([
-    split_left,
-    [entry],
-    case split_right {
-      [] -> []
-      [_, ..right] -> right
-    },
-  ])
+  Ok(
+    "{"
+    <> string.join(
+      list.filter_map(entries, fn(opt) {
+        case opt {
+          None -> Error(opt)
+          Some(e) ->
+            Ok("\"" <> e.key <> "\"" <> ":" <> value_to_string(e.value))
+        }
+      }),
+      with: ",",
+    )
+    <> "}",
+  )
 }
 
 fn do_remove(
   map: Map(value),
   index: Int,
   value: value,
-) -> #(Option(value), Map(value)) {
+) -> Result(#(Option(value), Map(value)), Nil) {
   // This just does the same as insert_at but passes a None 'entry'
   // and reduces the num_entries
-  let new_map =
-    Map(
-      insert_at(map.inner, index, None),
-      map.size,
-      map.load,
-      map.num_entries - 1,
-    )
-  #(Some(value), new_map)
+  use entry <- result.try(treelist.set(map.inner, index, None))
+  let new_map = Map(..map, inner: entry, num_entries: map.num_entries - 1)
+  Ok(#(Some(value), new_map))
 }
 
 /// Checks whether the current map contains >= load entries
@@ -416,13 +419,14 @@ fn do_remove(
 fn check_capacity(
   map: Map(value),
   original_hash: Int,
-) -> #(Map(value), Option(Int)) {
+) -> Result(#(Map(value), Option(Int)), Nil) {
   case map.num_entries >= { map.size * map.load / 100 } {
     True -> {
-      let new_map = optimised_rehash(map, map.size * 2 + 1)
-      #(new_map, Some(fix_hash(new_map.size, original_hash)))
+      use new_map <- result.try(basic_rehash(map, map.size * 2 + 1))
+
+      Ok(#(new_map, Some(fix_hash(new_map.size, original_hash))))
     }
-    _ -> #(map, None)
+    _ -> Ok(#(map, None))
   }
 }
 
@@ -431,15 +435,16 @@ fn find_gap(
   key: String,
   last_position: Int,
   position: Int,
-) -> #(Int, Bool) {
-  case get_at(map.inner, position) {
-    None -> #(position, False)
+) -> Result(#(Int, Bool), Nil) {
+  use entry <- result.try(treelist.get(map.inner, position))
+  case entry {
+    None -> Ok(#(position, False))
     Some(e) -> {
       case e.key == key {
-        True -> #(position, True)
+        True -> Ok(#(position, True))
         False -> {
           case position {
-            position if position == last_position -> #(-1, False)
+            position if position == last_position -> Ok(#(-1, False))
             0 -> {
               // io.debug("_")
               find_gap(map, key, last_position, map.size - 1)
@@ -467,15 +472,16 @@ fn find_key(
   last_position: Int,
   position: Int,
   ret_fn: fn(Int, value) -> ret_val,
-) -> Option(ret_val) {
-  case get_at(map.inner, position) {
-    None -> None
+) -> Result(Option(ret_val), Nil) {
+  use entry <- result.try(treelist.get(map.inner, position))
+  case entry {
+    None -> Ok(None)
     Some(e) -> {
       case e.key == key {
-        True -> Some(ret_fn(position, e.value))
+        True -> Ok(Some(ret_fn(position, e.value)))
         False -> {
           case position {
-            position if position == last_position -> None
+            position if position == last_position -> Ok(None)
             0 -> find_key(map, key, last_position, map.size - 1, ret_fn)
             position -> find_key(map, key, last_position, position - 1, ret_fn)
           }
@@ -513,14 +519,14 @@ fn ret_index_and_value(index: Int, value: value) -> #(Int, value) {
 //   )
 // }
 
-type RehashData(a) {
-  RehashData(
-    new_map_list: List(Option(Entry(a))),
-    duplicates: List(#(#(Int, Int), Entry(a))),
-    index: Int,
-    count: Int,
-  )
-}
+// type RehashData(a) {
+//   RehashData(
+//     new_map_list: TreeList(Option(Entry(a))),
+//     duplicates: List(#(#(Int, Int), Entry(a))),
+//     index: Int,
+//     count: Int,
+//   )
+// }
 
 /// Optimised method of rehashing. Much better than just creating a new
 /// map and reinserting everything :P
@@ -539,60 +545,75 @@ type RehashData(a) {
 /// (A slight optimisation might be possible here to use the duplicate list while
 /// inserting Nones. Basically drain the list instead of outputting nones. The data structures
 /// around the none insertion are pretty gnarly so I'll leave that as a future endeavour)
-fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
-  let entries =
-    list.fold(map.inner, [], fn(acc, en) {
-      case en {
-        Some(entry) -> {
-          [#(calc_hash(new_size, entry.key), entry), ..acc]
-        }
-        None -> acc
-      }
-    })
-    |> list.sort(fn(i1, i2) {
-      let #(#(hash1, _), _) = i1
-      let #(#(hash2, _), _) = i2
-      int.compare(hash2, hash1)
-    })
+// fn optimised_rehash(map: Map(value), new_size: Int) -> Map(value) {
+//   let entries =
+//     list.fold(map.inner, [], fn(acc, en) {
+//       case en {
+//         Some(entry) -> {
+//           [#(calc_hash(new_size, entry.key), entry), ..acc]
+//         }
+//         None -> acc
+//       }
+//     })
+//     |> list.sort(fn(i1, i2) {
+//       let #(#(hash1, _), _) = i1
+//       let #(#(hash2, _), _) = i2
+//       int.compare(hash2, hash1)
+//     })
 
-  let proc_list =
-    list.fold(
-      entries,
-      RehashData([], [], new_size, 0),
-      fn(acc: RehashData(value), en) {
-        let #(#(hash, _), _) = en
-        case acc.index == hash {
-          True -> RehashData(..acc, duplicates: [en, ..acc.duplicates])
-          False -> {
-            RehashData(
-              [
-                Some(en.1),
-                ..prepend_none(acc.index - hash - 1, acc.new_map_list)
-              ],
-              acc.duplicates,
-              hash,
-              acc.count + 1,
-            )
-          }
-        }
-      },
-    )
-  let it = case proc_list.index == 0 {
-    True -> iterator.empty()
-    False -> iterator.range(proc_list.index - 1, 0)
-  }
-  let res_list =
-    iterator.fold(it, proc_list, fn(acc, _en) {
-      RehashData(..acc, new_map_list: [None, ..acc.new_map_list])
-    })
-  res_list.duplicates
-  |> list.fold(
-    Map(res_list.new_map_list, new_size, map.load, res_list.count),
-    fn(acc, en) {
-      let entry = en.1
-      put(acc, entry.key, entry.value)
-    },
-  )
+//   let proc_list =
+//     list.fold(
+//       entries,
+//       RehashData([], [], new_size, 0),
+//       fn(acc: RehashData(value), en) {
+//         let #(#(hash, _), _) = en
+//         case acc.index == hash {
+//           True -> RehashData(..acc, duplicates: [en, ..acc.duplicates])
+//           False -> {
+//             RehashData(
+//               [
+//                 Some(en.1),
+//                 ..prepend_none(acc.index - hash - 1, acc.new_map_list)
+//               ],
+//               acc.duplicates,
+//               hash,
+//               acc.count + 1,
+//             )
+//           }
+//         }
+//       },
+//     )
+//   let it = case proc_list.index == 0 {
+//     True -> iterator.empty()
+//     False -> iterator.range(proc_list.index - 1, 0)
+//   }
+//   let res_list =
+//     iterator.fold(it, proc_list, fn(acc, _en) {
+//       RehashData(..acc, new_map_list: [None, ..acc.new_map_list])
+//     })
+//   res_list.duplicates
+//   |> list.fold(
+//     Map(res_list.new_map_list, new_size, map.load, res_list.count),
+//     fn(acc, en) {
+//       let entry = en.1
+//       put(acc, entry.key, entry.value)
+//     },
+//   )
+// }
+
+fn basic_rehash(map: Map(value), new_size: Int) -> Result(Map(value), Nil) {
+  use new_map <- result.try(new_with_size_and_load(
+    new_size,
+    int.to_float(map.load) /. 100.0,
+  ))
+
+  treelist.to_iterator(map.inner)
+  |> iterator.try_fold(new_map, fn(map, entry) {
+    case entry {
+      Some(entry) -> put(map, entry.key, entry.value)
+      None -> Ok(map)
+    }
+  })
 }
 
 fn prepend_none(times: Int, acc: List(Option(Entry(a)))) {
@@ -625,7 +646,7 @@ fn calc_hash(map_size: Int, key: String) -> #(Int, Int) {
 /// Returns the internal storage size of the map
 /// This is mainly for testing use
 pub fn list_size(map: Map(value)) -> Int {
-  list.length(map.inner)
+  treelist.size(map.inner)
 }
 
 /// Returns a count of the number of entries in the map
@@ -633,7 +654,8 @@ pub fn list_size(map: Map(value)) -> Int {
 /// Performs a full iteration of the list incrementing for all Some(_)
 /// entries
 pub fn full_count(map: Map(value)) -> Int {
-  list.fold(map.inner, 0, fn(acc, e) {
+  treelist.to_iterator(map.inner)
+  |> iterator.fold(0, fn(acc, e) {
     case e {
       None -> acc
       Some(_) -> acc + 1
