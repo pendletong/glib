@@ -1,7 +1,9 @@
 import gleam/int
+import gleam/io
 import gleam/iterator
 import gleam/list
 import gleam/result
+import gleam/string
 import gleeunit/should
 import glib/treelist
 
@@ -153,6 +155,35 @@ pub fn remove_test() {
   |> treelist.get(50)
   |> should.be_ok
   |> should.equal(51)
+
+  let l =
+    treelist.from_list(list.range(0, 49) |> list.map(int.to_string))
+    |> should.be_ok
+
+  let #(e, l) =
+    treelist.remove(l, 2)
+    |> should.be_ok
+  e |> should.equal("2")
+  let #(e, l) =
+    treelist.remove(l, 25)
+    |> should.be_ok
+  e |> should.equal("26")
+  let #(e, l) =
+    treelist.remove(l, 40)
+    |> should.be_ok
+  e |> should.equal("42")
+  let #(e, l) =
+    treelist.remove(l, 1)
+    |> should.be_ok
+  e |> should.equal("1")
+  let #(e, l) =
+    treelist.remove(l, 10)
+    |> should.be_ok
+  e |> should.equal("12")
+  let #(e, l) =
+    treelist.remove(l, 2)
+    |> should.be_ok
+  e |> should.equal("4")
 }
 
 pub fn mass_test() {
