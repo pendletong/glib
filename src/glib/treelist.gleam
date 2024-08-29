@@ -254,16 +254,14 @@ pub fn repeat(item a: a, times times: Int) -> Result(TreeList(a), Nil) {
 /// ```
 ///
 pub fn to_iterator(tlist: TreeList(value)) -> Iterator(value) {
-  let stack = #(list.reverse(init_stack(tlist.root, 0)), 0)
-  let yield = fn(acc: #(List(Node(value)), Int)) {
+  let stack = list.reverse(init_stack(tlist.root, 0))
+  let yield = fn(acc: List(Node(value))) {
     case acc {
-      #([], _) -> Done
-      #([node, ..rest], index) -> {
-        let right = option.lazy_unwrap(node.right, fn() { blank_node() })
+      [Node(Some(value), _, _, _, Some(right)), ..rest] -> {
         let rest = list.append(list.reverse(get_left_stack(right)), rest)
-        let index = index + 1
-        Next(option.lazy_unwrap(node.value, fn() { panic }), #(rest, index))
+        Next(value, rest)
       }
+      _ -> Done
     }
   }
 
@@ -273,12 +271,8 @@ pub fn to_iterator(tlist: TreeList(value)) -> Iterator(value) {
 // Internal functions
 
 fn do_to_list(node: Node(value)) -> List(value) {
-  let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-  let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-
-  case node.value {
-    None -> []
-    Some(v) -> {
+  case node {
+    Node(Some(value), _, _, Some(left), Some(right)) -> {
       let left_list = case left {
         Node(None, 0, 0, None, None) -> []
         _ -> do_to_list(left)
@@ -288,53 +282,62 @@ fn do_to_list(node: Node(value)) -> List(value) {
         _ -> do_to_list(right)
       }
 
-      list.append(left_list, [v, ..right_list])
+      list.append(left_list, [value, ..right_list])
     }
+    _ -> []
   }
 }
 
 fn remove_node_at(node: Node(value), index: Int) -> Result(Node(value), Nil) {
   use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
-  let left = option.lazy_unwrap(node.left, fn() { blank_node() })
 
-  use #(res, rebalance) <- result.try(case int.compare(index, left.size) {
-    Lt -> {
-      use new_left <- result.try(remove_node_at(left, index))
-      Ok(#(Node(..node, left: Some(new_left)), True))
-    }
-    Gt -> {
-      let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-      use new_right <- result.try(remove_node_at(right, index - left.size - 1))
-      Ok(#(Node(..node, right: Some(new_right)), True))
-    }
-    Eq -> {
-      let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-      case left, right {
-        Node(None, 0, 0, None, None), Node(None, 0, 0, None, None) -> {
-          Ok(#(blank_node(), False))
+  case node.left, node.right {
+    Some(left), Some(right) -> {
+      use #(res, rebalance) <- result.try(case int.compare(index, left.size) {
+        Lt -> {
+          use new_left <- result.try(remove_node_at(left, index))
+          Ok(#(Node(..node, left: Some(new_left)), True))
         }
-        _, Node(None, 0, 0, None, None) -> {
-          Ok(#(left, False))
+        Gt -> {
+          use new_right <- result.try(remove_node_at(
+            right,
+            index - left.size - 1,
+          ))
+          Ok(#(Node(..node, right: Some(new_right)), True))
         }
-        Node(None, 0, 0, None, None), _ -> {
-          Ok(#(right, False))
+        Eq -> {
+          case left, right {
+            Node(None, 0, 0, None, None), Node(None, 0, 0, None, None) -> {
+              Ok(#(blank_node(), False))
+            }
+            _, Node(None, 0, 0, None, None) -> {
+              Ok(#(left, False))
+            }
+            Node(None, 0, 0, None, None), _ -> {
+              Ok(#(right, False))
+            }
+            _, _ -> {
+              let temp = find_ultimate_left(right)
+              use new_right <- result.try(remove_node_at(right, 0))
+              Ok(#(
+                Node(..node, right: Some(new_right), value: temp.value),
+                True,
+              ))
+            }
+          }
         }
-        _, _ -> {
-          let temp = find_ultimate_left(right)
-          use new_right <- result.try(remove_node_at(right, 0))
-          Ok(#(Node(..node, right: Some(new_right), value: temp.value), True))
+      })
+      case rebalance {
+        False -> Ok(res)
+        True -> {
+          case recalculate(res) {
+            Error(_) -> Error(Nil)
+            Ok(node) -> balance(node)
+          }
         }
       }
     }
-  })
-  case rebalance {
-    False -> Ok(res)
-    True -> {
-      case recalculate(res) {
-        Error(_) -> Error(Nil)
-        Ok(node) -> balance(node)
-      }
-    }
+    _, _ -> Error(Nil)
   }
 }
 
@@ -349,16 +352,22 @@ fn find_ultimate_left(node: Node(value)) -> Node(value) {
 fn get_node_at(node: Node(value), index: Int) -> Result(Node(value), Nil) {
   use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
 
-  let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-  case int.compare(index, left.size) {
-    Lt -> {
-      get_node_at(left, index)
+  case node.left {
+    Some(left) -> {
+      case int.compare(index, left.size) {
+        Lt -> {
+          get_node_at(left, index)
+        }
+        Gt -> {
+          case node.right {
+            Some(right) -> get_node_at(right, index - left.size - 1)
+            _ -> Error(Nil)
+          }
+        }
+        Eq -> Ok(node)
+      }
     }
-    Gt -> {
-      let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-      get_node_at(right, index - left.size - 1)
-    }
-    Eq -> Ok(node)
+    _ -> Error(Nil)
   }
 }
 
@@ -369,23 +378,31 @@ fn set_node_at(
 ) -> Result(Node(value), Nil) {
   use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
 
-  let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-  case int.compare(index, left.size) {
-    Lt -> {
-      use new_left <- result.try(set_node_at(left, index, value))
+  case node.left {
+    Some(left) -> {
+      case int.compare(index, left.size) {
+        Lt -> {
+          use new_left <- result.try(set_node_at(left, index, value))
 
-      Ok(Node(..node, left: Some(new_left)))
+          Ok(Node(..node, left: Some(new_left)))
+        }
+        Gt -> {
+          case node.right {
+            Some(right) -> {
+              use new_right <- result.try(set_node_at(
+                right,
+                index - left.size - 1,
+                value,
+              ))
+              Ok(Node(..node, right: Some(new_right)))
+            }
+            _ -> Error(Nil)
+          }
+        }
+        Eq -> Ok(Node(..node, value: Some(value)))
+      }
     }
-    Gt -> {
-      let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-      use new_right <- result.try(set_node_at(
-        right,
-        index - left.size - 1,
-        value,
-      ))
-      Ok(Node(..node, right: Some(new_right)))
-    }
-    Eq -> Ok(Node(..node, value: Some(value)))
+    _ -> Error(Nil)
   }
 }
 
@@ -396,33 +413,38 @@ fn insert_node_at(
 ) -> Result(Node(value), Nil) {
   use <- bool.guard(when: index < 0 || index > node.size, return: Error(Nil))
 
-  use res <- result.try({
-    case node {
-      Node(None, 0, 0, None, None) -> Ok(new_node(value))
-      _ -> {
-        let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-        case int.compare(index, left.size) {
-          Lt | Eq -> {
-            use new_left <- result.try(insert_node_at(left, index, value))
-            Ok(Node(..node, left: Some(new_left)))
-          }
-          Gt -> {
-            let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-            use new_right <- result.try(insert_node_at(
-              right,
-              index - left.size - 1,
-              value,
-            ))
-            Ok(Node(..node, right: Some(new_right)))
+  case node {
+    Node(None, 0, 0, None, None) -> Ok(new_node(value))
+    _ -> {
+      case node.left {
+        Some(left) -> {
+          use res <- result.try(case int.compare(index, left.size) {
+            Lt | Eq -> {
+              use new_left <- result.try(insert_node_at(left, index, value))
+              Ok(Node(..node, left: Some(new_left)))
+            }
+            Gt -> {
+              case node.right {
+                Some(right) -> {
+                  use new_right <- result.try(insert_node_at(
+                    right,
+                    index - left.size - 1,
+                    value,
+                  ))
+                  Ok(Node(..node, right: Some(new_right)))
+                }
+                _ -> Error(Nil)
+              }
+            }
+          })
+          case recalculate(res) {
+            Error(_) -> Error(Nil)
+            Ok(node) -> balance(node)
           }
         }
+        _ -> Error(Nil)
       }
     }
-  })
-
-  case recalculate(res) {
-    Error(_) -> Error(Nil)
-    Ok(node) -> balance(node)
   }
 }
 
@@ -435,80 +457,88 @@ fn recalculate(node: Node(value)) -> Result(Node(value), Nil) {
     return: Error(Nil),
   )
 
-  let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-  let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-  use <- bool.guard(
-    when: left.height < 0 || right.height < 0,
-    return: Error(Nil),
-  )
+  case node.left, node.right {
+    Some(left), Some(right) -> {
+      use <- bool.guard(
+        when: left.height < 0 || right.height < 0,
+        return: Error(Nil),
+      )
 
-  use <- bool.guard(when: left.size < 0 || right.size < 0, return: Error(Nil))
+      use <- bool.guard(
+        when: left.size < 0 || right.size < 0,
+        return: Error(Nil),
+      )
 
-  let new_height = int.max(left.height, right.height) + 1
-  let new_size = left.size + right.size + 1
+      let new_height = int.max(left.height, right.height) + 1
+      let new_size = left.size + right.size + 1
 
-  use <- bool.guard(when: new_height < 0 || new_size < 0, return: Error(Nil))
+      use <- bool.guard(
+        when: new_height < 0 || new_size < 0,
+        return: Error(Nil),
+      )
 
-  Ok(Node(..node, height: new_height, size: new_size))
+      Ok(Node(..node, height: new_height, size: new_size))
+    }
+    _, _ -> Error(Nil)
+  }
 }
 
 fn balance(node: Node(value)) -> Result(Node(value), Nil) {
-  let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-  let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-
-  let balance = get_balance(left, right)
-
-  use <- bool.guard(when: int.absolute_value(balance) > 2, return: Error(Nil))
-
-  let result = case balance {
-    -2 -> {
-      let left_balance = balance_of(left)
+  case node.left, node.right {
+    Some(left), Some(right) -> {
+      let balance = get_balance(left, right)
       use <- bool.guard(
-        when: int.absolute_value(left_balance) > 1,
+        when: int.absolute_value(balance) > 2,
         return: Error(Nil),
       )
+      let result = case balance {
+        -2 -> {
+          let left_balance = balance_of(left)
+          use <- bool.guard(
+            when: int.absolute_value(left_balance) > 1,
+            return: Error(Nil),
+          )
 
-      use node <- result.try(case left_balance {
-        1 -> {
-          use rotated_left <- result.try(rotate_left(left))
-          Ok(Node(..node, left: Some(rotated_left)))
+          use node <- result.try(case left_balance {
+            1 -> {
+              use rotated_left <- result.try(rotate_left(left))
+              Ok(Node(..node, left: Some(rotated_left)))
+            }
+            _ -> Ok(node)
+          })
+          rotate_right(node)
+        }
+        2 -> {
+          let right_balance = balance_of(right)
+          use <- bool.guard(
+            when: int.absolute_value(right_balance) > 1,
+            return: Error(Nil),
+          )
+
+          use node <- result.try(case right_balance {
+            -1 -> {
+              use rotated_right <- result.try(rotate_right(right))
+              Ok(Node(..node, right: Some(rotated_right)))
+            }
+            _ -> Ok(node)
+          })
+          rotate_left(node)
         }
         _ -> Ok(node)
-      })
-      rotate_right(node)
-    }
-    2 -> {
-      let right_balance = balance_of(right)
-      use <- bool.guard(
-        when: int.absolute_value(right_balance) > 1,
-        return: Error(Nil),
-      )
+      }
+      case result {
+        Error(_) -> Error(Nil)
+        Ok(r) -> {
+          use <- bool.guard(
+            when: int.absolute_value(balance_of(r)) > 1,
+            return: Error(Nil),
+          )
 
-      use node <- result.try(case right_balance {
-        -1 -> {
-          use rotated_right <- result.try(rotate_right(right))
-          Ok(Node(..node, right: Some(rotated_right)))
+          result
         }
-        _ -> Ok(node)
-      })
-      rotate_left(node)
+      }
     }
-    _ -> Ok(node)
-  }
-
-  case result {
-    Error(_) -> Error(Nil)
-    Ok(r) -> {
-      use <- bool.guard(
-        when: int.absolute_value(
-          balance_of(option.lazy_unwrap(r.right, fn() { blank_node() })),
-        )
-          > 1,
-        return: Error(Nil),
-      )
-
-      result
-    }
+    _, _ -> Error(Nil)
   }
 }
 
@@ -521,11 +551,14 @@ fn rotate_left(node: Node(value)) -> Result(Node(value), Nil) {
     return: Error(Nil),
   )
 
-  let root = option.lazy_unwrap(node.right, fn() { blank_node() })
+  case node.right {
+    Some(root) -> {
+      use new_node <- result.try(recalculate(Node(..node, right: root.left)))
 
-  use new_node <- result.try(recalculate(Node(..node, right: root.left)))
-
-  recalculate(Node(..root, left: Some(new_node)))
+      recalculate(Node(..root, left: Some(new_node)))
+    }
+    _ -> Error(Nil)
+  }
 }
 
 fn rotate_right(node: Node(value)) -> Result(Node(value), Nil) {
@@ -537,18 +570,21 @@ fn rotate_right(node: Node(value)) -> Result(Node(value), Nil) {
     return: Error(Nil),
   )
 
-  let root = option.lazy_unwrap(node.left, fn() { blank_node() })
+  case node.left {
+    Some(root) -> {
+      use new_node <- result.try(recalculate(Node(..node, left: root.right)))
 
-  use new_node <- result.try(recalculate(Node(..node, left: root.right)))
-
-  recalculate(Node(..root, right: Some(new_node)))
+      recalculate(Node(..root, right: Some(new_node)))
+    }
+    _ -> Error(Nil)
+  }
 }
 
 fn balance_of(node: Node(_)) -> Int {
-  let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-  let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-
-  get_balance(left, right)
+  case node.left, node.right {
+    Some(left), Some(right) -> get_balance(left, right)
+    _, _ -> 9999
+  }
 }
 
 fn get_balance(left: Node(_), right: Node(_)) -> Int {
@@ -574,8 +610,10 @@ fn get_left_stack(node: Node(value)) -> List(Node(value)) {
   case node {
     Node(None, 0, 0, None, None) -> []
     _ -> {
-      let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-      [node, ..get_left_stack(left)]
+      case node.left {
+        Some(left) -> [node, ..get_left_stack(left)]
+        _ -> []
+      }
     }
   }
 }
@@ -584,19 +622,25 @@ fn init_stack(node: Node(value), index: Int) -> List(Node(value)) {
   case node {
     Node(None, 0, 0, None, None) -> []
     _ -> {
-      let left = option.lazy_unwrap(node.left, fn() { blank_node() })
-      case int.compare(index, left.size) {
-        Eq -> {
-          [node]
+      case node.left {
+        Some(left) -> {
+          case int.compare(index, left.size) {
+            Eq -> {
+              [node]
+            }
+            Lt -> {
+              [node, ..init_stack(left, index)]
+            }
+            Gt -> {
+              let index = index - left.size + 1
+              case node.right {
+                Some(right) -> init_stack(right, index)
+                _ -> []
+              }
+            }
+          }
         }
-        Lt -> {
-          [node, ..init_stack(left, index)]
-        }
-        Gt -> {
-          let index = index - left.size + 1
-          let right = option.lazy_unwrap(node.right, fn() { blank_node() })
-          init_stack(right, index)
-        }
+        _ -> []
       }
     }
   }
