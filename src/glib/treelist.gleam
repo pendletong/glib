@@ -276,24 +276,21 @@ fn do_to_list(node: Node(value)) -> List(value) {
   let left = option.lazy_unwrap(node.left, fn() { blank_node() })
   let right = option.lazy_unwrap(node.right, fn() { blank_node() })
 
-  list.append(
-    case left {
-      Node(None, 0, 0, None, None) -> []
-      _ -> do_to_list(left)
-    },
-    [
-      case node.value {
-        None -> panic
-        Some(v) -> v
-      },
-      ..{
-        case right {
-          Node(None, 0, 0, None, None) -> []
-          _ -> do_to_list(right)
-        }
+  case node.value {
+    None -> []
+    Some(v) -> {
+      let left_list = case left {
+        Node(None, 0, 0, None, None) -> []
+        _ -> do_to_list(left)
       }
-    ],
-  )
+      let right_list = case right {
+        Node(None, 0, 0, None, None) -> []
+        _ -> do_to_list(right)
+      }
+
+      list.append(left_list, [v, ..right_list])
+    }
+  }
 }
 
 fn remove_node_at(node: Node(value), index: Int) -> Result(Node(value), Nil) {
