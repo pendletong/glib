@@ -267,3 +267,13 @@ pub fn to_iterator_test() {
   |> iterator.to_list
   |> should.equal(l)
 }
+
+pub fn to_iterator_reverse_test() {
+  let l = list.range(0, 99)
+  l
+  |> treelist.from_list
+  |> should.be_ok
+  |> treelist.to_iterator_reverse
+  |> iterator.to_list
+  |> should.equal(list.reverse(l))
+}
