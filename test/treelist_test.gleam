@@ -153,6 +153,7 @@ pub fn remove_test() {
   |> treelist.get(50)
   |> should.be_ok
   |> should.equal(51)
+  list2 |> treelist.size |> should.equal(99)
 
   let l =
     treelist.from_list(list.range(0, 49) |> list.map(int.to_string))
@@ -162,26 +163,33 @@ pub fn remove_test() {
     treelist.remove(l, 2)
     |> should.be_ok
   e |> should.equal("2")
+  l |> treelist.size |> should.equal(49)
   let #(e, l) =
     treelist.remove(l, 25)
     |> should.be_ok
   e |> should.equal("26")
+  l |> treelist.size |> should.equal(48)
   let #(e, l) =
     treelist.remove(l, 40)
     |> should.be_ok
   e |> should.equal("42")
+  l |> treelist.size |> should.equal(47)
+  l |> treelist.remove(99) |> should.be_error
   let #(e, l) =
     treelist.remove(l, 1)
     |> should.be_ok
   e |> should.equal("1")
+  l |> treelist.size |> should.equal(46)
   let #(e, l) =
     treelist.remove(l, 10)
     |> should.be_ok
   e |> should.equal("12")
-  let #(e, _) =
+  l |> treelist.size |> should.equal(45)
+  let #(e, l) =
     treelist.remove(l, 2)
     |> should.be_ok
   e |> should.equal("4")
+  l |> treelist.size |> should.equal(44)
 }
 
 pub fn mass_test() {

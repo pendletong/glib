@@ -189,9 +189,7 @@ pub fn remove(
 ) -> Result(#(value, TreeList(value)), Nil) {
   use <- bool.guard(when: index < 0 || index > size(list), return: Error(Nil))
 
-  use value <- result.try(get(list, index))
-
-  use new_root <- result.try(remove_node_at(list.root, index))
+  use #(new_root, value) <- result.try(remove_node_at(list.root, index))
 
   Ok(#(value, TreeList(new_root)))
 }
@@ -502,39 +500,45 @@ fn do_to_list(node: Node(value)) -> List(value) {
   }
 }
 
-fn remove_node_at(node: Node(value), index: Int) -> Result(Node(value), Nil) {
+fn remove_node_at(
+  node: Node(value),
+  index: Int,
+) -> Result(#(Node(value), value), Nil) {
   use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
 
-  case node.left, node.right {
-    Some(left), Some(right) -> {
-      use #(res, rebalance) <- result.try(case int.compare(index, left.size) {
+  case node.left, node.right, node.value {
+    Some(left), Some(right), Some(node_value) -> {
+      use #(res, removed_value, rebalance) <- result.try(case
+        int.compare(index, left.size)
+      {
         Lt -> {
-          use new_left <- result.try(remove_node_at(left, index))
-          Ok(#(Node(..node, left: Some(new_left)), True))
+          use #(new_left, rval) <- result.try(remove_node_at(left, index))
+          Ok(#(Node(..node, left: Some(new_left)), rval, True))
         }
         Gt -> {
-          use new_right <- result.try(remove_node_at(
+          use #(new_right, rval) <- result.try(remove_node_at(
             right,
             index - left.size - 1,
           ))
-          Ok(#(Node(..node, right: Some(new_right)), True))
+          Ok(#(Node(..node, right: Some(new_right)), rval, True))
         }
         Eq -> {
           case left, right {
             Node(None, 0, 0, None, None), Node(None, 0, 0, None, None) -> {
-              Ok(#(blank_node(), False))
+              Ok(#(blank_node(), node_value, False))
             }
             _, Node(None, 0, 0, None, None) -> {
-              Ok(#(left, False))
+              Ok(#(left, node_value, False))
             }
             Node(None, 0, 0, None, None), _ -> {
-              Ok(#(right, False))
+              Ok(#(right, node_value, False))
             }
             _, _ -> {
               let temp = find_ultimate_left(right)
-              use new_right <- result.try(remove_node_at(right, 0))
+              use #(new_right, _) <- result.try(remove_node_at(right, 0))
               Ok(#(
                 Node(..node, right: Some(new_right), value: temp.value),
+                node_value,
                 True,
               ))
             }
@@ -542,16 +546,19 @@ fn remove_node_at(node: Node(value), index: Int) -> Result(Node(value), Nil) {
         }
       })
       case rebalance {
-        False -> Ok(res)
+        False -> Ok(#(res, removed_value))
         True -> {
           case recalculate(res) {
             Error(_) -> Error(Nil)
-            Ok(node) -> balance(node)
+            Ok(node) -> {
+              use balanced <- result.try(balance(node))
+              Ok(#(balanced, removed_value))
+            }
           }
         }
       }
     }
-    _, _ -> Error(Nil)
+    _, _, _ -> Error(Nil)
   }
 }
 
