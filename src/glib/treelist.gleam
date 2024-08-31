@@ -9,11 +9,13 @@
 
 import gleam/bool
 import gleam/int
+import gleam/io
 import gleam/iterator.{type Iterator, Done, Next}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order.{Eq, Gt, Lt}
 import gleam/result
+import gleam/string
 
 pub opaque type TreeList(value) {
   TreeList(root: Node(value))
@@ -254,12 +256,34 @@ pub fn repeat(item a: a, times times: Int) -> Result(TreeList(a), Nil) {
 /// ```
 ///
 pub fn to_iterator(tlist: TreeList(value)) -> Iterator(value) {
-  let stack = list.reverse(init_stack(tlist.root, 0))
-  let yield = fn(acc: List(Node(value))) {
+  node_iterator(tlist, fn(_node, value, _index) { value })
+}
+
+pub fn filter(
+  tlist: TreeList(value),
+  filter_fn: fn(value) -> Bool,
+) -> Result(TreeList(value), Nil) {
+  to_iterator(tlist)
+  |> iterator.try_fold(new(), fn(acc, el) {
+    case filter_fn(el) {
+      True -> add(acc, el)
+      False -> Ok(acc)
+    }
+  })
+}
+
+// Internal functions
+
+fn node_iterator(
+  tlist: TreeList(value),
+  ret_fn: fn(Node(value), value, Int) -> any,
+) -> Iterator(any) {
+  let stack = #(list.reverse(init_stack(tlist.root, 0)), 0)
+  let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
-      [Node(Some(value), _, _, _, Some(right)), ..rest] -> {
+      #([Node(Some(value), _, _, _, Some(right)) as node, ..rest], index) -> {
         let rest = list.append(list.reverse(get_left_stack(right)), rest)
-        Next(value, rest)
+        Next(ret_fn(node, value, index), #(rest, index + 1))
       }
       _ -> Done
     }
@@ -267,8 +291,6 @@ pub fn to_iterator(tlist: TreeList(value)) -> Iterator(value) {
 
   iterator.unfold(stack, yield)
 }
-
-// Internal functions
 
 fn do_to_list(node: Node(value)) -> List(value) {
   case node {
