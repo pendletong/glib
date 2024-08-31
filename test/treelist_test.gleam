@@ -1,9 +1,7 @@
 import gleam/int
-import gleam/io
 import gleam/iterator
 import gleam/list
 import gleam/result
-import gleam/string
 import gleeunit/should
 import glib/treelist
 
@@ -180,7 +178,7 @@ pub fn remove_test() {
     treelist.remove(l, 10)
     |> should.be_ok
   e |> should.equal("12")
-  let #(e, l) =
+  let #(e, _) =
     treelist.remove(l, 2)
     |> should.be_ok
   e |> should.equal("4")
