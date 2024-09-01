@@ -1,6 +1,5 @@
 import gleam/io
 import gleam/iterator
-import gleam/result
 import glib/treelist
 
 pub fn main() {

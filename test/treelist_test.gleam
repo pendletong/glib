@@ -378,3 +378,20 @@ pub fn set_test() {
 
   treelist.set(l, 5, 999) |> should.be_error
 }
+
+pub fn filter_test() {
+  let l = treelist.from_list(list.range(0, 99)) |> should.be_ok
+
+  treelist.size(l) |> should.equal(100)
+
+  let l2 = treelist.filter(l, fn(el) { int.is_even(el) })
+  treelist.size(l2) |> should.equal(50)
+  list.range(0, 99)
+  |> list.each(fn(i) {
+    treelist.index_of(l2, i)
+    |> should.equal(case int.is_even(i) {
+      False -> -1
+      True -> i / 2
+    })
+  })
+}

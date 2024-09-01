@@ -333,12 +333,12 @@ pub fn contains(tlist: TreeList(value), item: value) -> Bool {
 pub fn filter(
   tlist: TreeList(value),
   filter_fn: fn(value) -> Bool,
-) -> Result(TreeList(value), Nil) {
+) -> TreeList(value) {
   to_iterator(tlist)
-  |> iterator.try_fold(new(), fn(acc, el) {
+  |> iterator.fold(new(), fn(acc, el) {
     case filter_fn(el) {
-      True -> add(acc, el)
-      False -> Ok(acc)
+      True -> TreeList(insert_node_at(acc.root, get_size(acc.root), el))
+      False -> acc
     }
   })
 }

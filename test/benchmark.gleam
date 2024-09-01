@@ -71,10 +71,9 @@ fn list_remove_benchmark() {
       benchmark.Function(label: "treelist filter", callable: fn(test_data) {
         fn() {
           let #(l, _, removals) = test_data
-          let assert Ok(_) =
-            treelist.filter(l, fn(val) {
-              bool.negate(list.contains(removals, val))
-            })
+          treelist.filter(l, fn(val) {
+            bool.negate(list.contains(removals, val))
+          })
           Nil
         }
       }),
