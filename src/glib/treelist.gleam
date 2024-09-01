@@ -66,7 +66,6 @@ pub fn size(list: TreeList(value)) -> Int {
 /// 
 pub fn get(list: TreeList(value), index: Int) -> Result(value, Nil) {
   use <- bool.guard(index < 0 || index >= size(list), return: Error(Nil))
-
   case get_node_at(list.root, index) {
     Node(value, ..) -> Ok(value)
     BlankNode -> Error(Nil)
@@ -349,14 +348,14 @@ pub fn filter(
 fn get_size(node: Node(value)) -> Int {
   case node {
     BlankNode -> 0
-    Node(_, _, size, _, _) -> size
+    Node(size:, ..) -> size
   }
 }
 
 fn get_height(node: Node(value)) -> Int {
   case node {
     BlankNode -> 0
-    Node(_, height, _, _, _) -> height
+    Node(height:, ..) -> height
   }
 }
 
@@ -419,7 +418,6 @@ fn recalculate(node: Node(value)) -> Node(value) {
     Node(value:, left:, right:, ..) -> {
       let new_height = int.max(get_height(left), get_height(right)) + 1
       let new_size = get_size(left) + get_size(right) + 1
-
       Node(value:, left:, right:, height: new_height, size: new_size)
     }
     _ -> BlankNode
@@ -757,23 +755,23 @@ fn set_node_at(node: Node(value), index: Int, new_value: value) -> Node(value) {
       case int.compare(index, left_size) {
         Lt -> {
           Node(
-            value: value,
-            size: size,
-            height: height,
+            value:,
+            size:,
+            height:,
             left: set_node_at(left, index, new_value),
-            right: right,
+            right:,
           )
         }
         Gt -> {
           Node(
-            value: value,
-            size: size,
-            height: height,
-            left: left,
+            value:,
+            size:,
+            height:,
+            left:,
             right: set_node_at(right, index - left_size - 1, new_value),
           )
         }
-        Eq -> Node(new_value, size, height, left, right)
+        Eq -> Node(value: new_value, size:, height:, left:, right:)
       }
     }
     _ -> BlankNode
