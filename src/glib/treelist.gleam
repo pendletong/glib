@@ -252,7 +252,7 @@ pub fn repeat(item a: a, times times: Int) -> Result(TreeList(a), Nil) {
 /// ```
 ///
 pub fn to_iterator(tlist: TreeList(value)) -> Iterator(value) {
-  node_iterator(tlist, fn(_node, value, _index) { value })
+  node_iterator(tlist.root, fn(_node, value, _index) { value })
 }
 
 /// Creates an iterator that yields each element from the given treelist.
@@ -265,7 +265,7 @@ pub fn to_iterator(tlist: TreeList(value)) -> Iterator(value) {
 /// ```
 ///
 pub fn to_iterator_reverse(tlist: TreeList(value)) -> Iterator(value) {
-  node_iterator_reverse(tlist, fn(_node, value, _index) { value })
+  node_iterator_reverse(tlist.root, fn(_node, value, _index) { value })
 }
 
 /// Returns the index of the first occurrence of the specified element
@@ -288,7 +288,7 @@ pub fn to_iterator_reverse(tlist: TreeList(value)) -> Iterator(value) {
 ///
 pub fn index_of(tlist: TreeList(value), item: value) -> Int {
   do_index_of(
-    node_iterator(tlist, fn(_, value, index) { #(value, index) }),
+    node_iterator(tlist.root, fn(_, value, index) { #(value, index) }),
     item,
   )
 }
@@ -314,7 +314,7 @@ pub fn index_of(tlist: TreeList(value), item: value) -> Int {
 pub fn last_index_of(tlist: TreeList(value), item: value) -> Int {
   case
     do_index_of(
-      node_iterator_reverse(tlist, fn(_, value, index) { #(value, index) }),
+      node_iterator_reverse(tlist.root, fn(_, value, index) { #(value, index) }),
       item,
     )
   {
@@ -355,10 +355,10 @@ pub fn filter(
 // Internal functions
 
 fn node_iterator(
-  tlist: TreeList(value),
+  tlist: Node(value),
   ret_fn: fn(Node(value), value, Int) -> ret_type,
 ) -> Iterator(ret_type) {
-  let stack = #(list.reverse(init_forward_stack(tlist.root, 0)), 0)
+  let stack = #(init_forward_stack(tlist, 0, []), 0)
   let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
       #([Node(Some(value), _, _, _, Some(right)) as node, ..rest], index) -> {
@@ -373,10 +373,10 @@ fn node_iterator(
 }
 
 fn node_iterator_reverse(
-  tlist: TreeList(value),
+  tlist: Node(value),
   ret_fn: fn(Node(value), value, Int) -> ret_type,
 ) -> Iterator(ret_type) {
-  let stack = #(list.reverse(init_backward_stack(tlist.root, 0)), 0)
+  let stack = #(init_backward_stack(tlist, 0, []), 0)
   let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
       #([Node(Some(value), _, _, Some(left), _) as node, ..rest], index) -> {
@@ -420,57 +420,55 @@ fn get_right_stack(
   }
 }
 
-fn init_forward_stack(node: Node(value), index: Int) -> List(Node(value)) {
+pub fn init_forward_stack(
+  node: Node(value),
+  index: Int,
+  acc: List(Node(value)),
+) -> List(Node(value)) {
   case node {
-    Node(None, 0, 0, None, None) -> []
+    Node(None, 0, 0, None, None) -> acc
     _ -> {
       case node.left {
         Some(left) -> {
           case int.compare(index, left.size) {
-            Eq -> {
-              [node]
-            }
-            Lt -> {
-              [node, ..init_forward_stack(left, index)]
-            }
-            Gt -> {
-              let index = index - left.size + 1
+            Eq -> [node, ..acc]
+            Lt -> init_forward_stack(left, index, [node, ..acc])
+            Gt ->
               case node.right {
-                Some(right) -> init_forward_stack(right, index)
-                _ -> []
+                Some(right) ->
+                  init_forward_stack(right, index - left.size + 1, acc)
+                _ -> acc
               }
-            }
           }
         }
-        _ -> []
+        _ -> acc
       }
     }
   }
 }
 
-fn init_backward_stack(node: Node(value), index: Int) -> List(Node(value)) {
+fn init_backward_stack(
+  node: Node(value),
+  index: Int,
+  acc: List(Node(value)),
+) -> List(Node(value)) {
   case node {
-    Node(None, 0, 0, None, None) -> []
+    Node(None, 0, 0, None, None) -> acc
     _ -> {
       case node.right {
         Some(right) -> {
           case int.compare(index, right.size) {
-            Eq -> {
-              [node]
-            }
-            Lt -> {
-              [node, ..init_backward_stack(right, index)]
-            }
-            Gt -> {
-              let index = index - right.size + 1
+            Eq -> [node, ..acc]
+            Lt -> init_backward_stack(right, index, [node, ..acc])
+            Gt ->
               case node.left {
-                Some(left) -> init_backward_stack(left, index)
-                _ -> []
+                Some(left) ->
+                  init_backward_stack(left, index - right.size + 1, acc)
+                _ -> acc
               }
-            }
           }
         }
-        _ -> []
+        _ -> acc
       }
     }
   }
@@ -577,8 +575,6 @@ fn find_ultimate_left(node: Node(value)) -> Node(value) {
 }
 
 fn get_node_at(node: Node(value), index: Int) -> Result(Node(value), Nil) {
-  use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
-
   case node.left {
     Some(left) -> {
       case int.compare(index, left.size) {
@@ -603,8 +599,6 @@ fn set_node_at(
   index: Int,
   value: value,
 ) -> Result(Node(value), Nil) {
-  use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
-
   case node.left {
     Some(left) -> {
       case int.compare(index, left.size) {
@@ -638,8 +632,6 @@ fn insert_node_at(
   index: Int,
   value: value,
 ) -> Result(Node(value), Nil) {
-  use <- bool.guard(when: index < 0 || index > node.size, return: Error(Nil))
-
   case node {
     Node(None, 0, 0, None, None) -> Ok(new_node(value))
     _ -> {
