@@ -362,7 +362,7 @@ fn node_iterator(
   let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
       #([Node(Some(value), _, _, _, Some(right)) as node, ..rest], index) -> {
-        let rest = list.append(list.reverse(get_left_stack(right)), rest)
+        let rest = list.append(get_left_stack(right, []), rest)
         Next(ret_fn(node, value, index), #(rest, index + 1))
       }
       _ -> Done
@@ -380,7 +380,7 @@ fn node_iterator_reverse(
   let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
       #([Node(Some(value), _, _, Some(left), _) as node, ..rest], index) -> {
-        let rest = list.append(list.reverse(get_right_stack(left)), rest)
+        let rest = list.append(list.reverse(get_right_stack(left, [])), rest)
         Next(ret_fn(node, value, index), #(rest, index + 1))
       }
       _ -> Done
@@ -390,25 +390,31 @@ fn node_iterator_reverse(
   iterator.unfold(stack, yield)
 }
 
-fn get_left_stack(node: Node(value)) -> List(Node(value)) {
+fn get_left_stack(
+  node: Node(value),
+  acc: List(Node(value)),
+) -> List(Node(value)) {
   case node {
-    Node(None, 0, 0, None, None) -> []
+    Node(None, 0, 0, None, None) -> acc
     _ -> {
       case node.left {
-        Some(left) -> [node, ..get_left_stack(left)]
-        _ -> []
+        Some(left) -> get_left_stack(left, [node, ..acc])
+        _ -> acc
       }
     }
   }
 }
 
-fn get_right_stack(node: Node(value)) -> List(Node(value)) {
+fn get_right_stack(
+  node: Node(value),
+  acc: List(Node(value)),
+) -> List(Node(value)) {
   case node {
-    Node(None, 0, 0, None, None) -> []
+    Node(None, 0, 0, None, None) -> acc
     _ -> {
       case node.right {
-        Some(right) -> [node, ..get_right_stack(right)]
-        _ -> []
+        Some(right) -> get_right_stack(right, [node, ..acc])
+        _ -> acc
       }
     }
   }
