@@ -380,7 +380,7 @@ fn node_iterator_reverse(
   let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
       #([Node(Some(value), _, _, Some(left), _) as node, ..rest], index) -> {
-        let rest = list.append(list.reverse(get_right_stack(left, [])), rest)
+        let rest = list.append(get_right_stack(left, []), rest)
         Next(ret_fn(node, value, index), #(rest, index + 1))
       }
       _ -> Done
