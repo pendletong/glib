@@ -680,7 +680,7 @@ fn node_iterator_reverse(
   iterator.unfold(stack, yield)
 }
 
-pub fn init_forward_stack(
+fn init_forward_stack(
   node: Node(value),
   index: Int,
   acc: List(Node(value)),
@@ -698,7 +698,7 @@ pub fn init_forward_stack(
   }
 }
 
-pub fn init_backward_stack(
+fn init_backward_stack(
   node: Node(value),
   index: Int,
   acc: List(Node(value)),
