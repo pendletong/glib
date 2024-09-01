@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/dict
 import gleam/int
 import gleam/iterator
@@ -8,6 +9,7 @@ import glib/treelist
 import glychee/benchmark
 import glychee/configuration
 
+@target(erlang)
 pub fn main() {
   configuration.initialize()
   configuration.set_pair(configuration.Warmup, 2)
@@ -16,8 +18,114 @@ pub fn main() {
   map_benchmark()
   list_benchmark()
   list_iterator_benchmark()
+  list_remove_benchmark()
+  to_list_benchmark()
 }
 
+@target(erlang)
+fn to_list_benchmark() {
+  benchmark.run(
+    [
+      benchmark.Function(label: "treelist to_list", callable: fn(test_data) {
+        fn() { treelist.to_list(test_data) }
+      }),
+    ],
+    [
+      benchmark.Data(label: "1000 items", data: {
+        list.range(0, 99)
+        |> treelist.from_list
+        |> result.unwrap(treelist.new())
+      }),
+      benchmark.Data(label: "10000 items", data: {
+        list.range(0, 9999)
+        |> treelist.from_list
+        |> result.unwrap(treelist.new())
+      }),
+      benchmark.Data(label: "100000 items", data: {
+        list.range(0, 99_999)
+        |> treelist.from_list
+        |> result.unwrap(treelist.new())
+      }),
+    ],
+  )
+}
+
+@target(erlang)
+fn list_remove_benchmark() {
+  let l100 = list.range(0, 99)
+  let l1000 = list.range(0, 999)
+  let l10000 = list.range(0, 9999)
+
+  benchmark.run(
+    [
+      benchmark.Function(label: "treelist remove", callable: fn(test_data) {
+        fn() {
+          let #(l, _, removals) = test_data
+          list.fold(removals, l, fn(acc, r) {
+            let assert Ok(#(_, l)) = treelist.remove(acc, r)
+            l
+          })
+          Nil
+        }
+      }),
+      benchmark.Function(label: "treelist filter", callable: fn(test_data) {
+        fn() {
+          let #(l, _, removals) = test_data
+          let assert Ok(_) =
+            treelist.filter(l, fn(val) {
+              bool.negate(list.contains(removals, val))
+            })
+          Nil
+        }
+      }),
+      benchmark.Function(label: "list remove", callable: fn(test_data) {
+        fn() {
+          let #(_, l, removals) = test_data
+          list.fold(removals, l, fn(acc, r) {
+            let #(l1, l2) = list.split(acc, r)
+            list.append(l1, list.drop(l2, 1))
+          })
+          Nil
+        }
+      }),
+      benchmark.Function(label: "list filter", callable: fn(test_data) {
+        fn() {
+          let #(_, l, removals) = test_data
+          list.filter(l, fn(v) { bool.negate(list.contains(removals, v)) })
+          Nil
+        }
+      }),
+    ],
+    [
+      benchmark.Data(label: "100 items", data: {
+        #(
+          result.lazy_unwrap(treelist.from_list(l100), fn() { panic }),
+          l100,
+          list.range(0, 50)
+            |> list.map(fn(v) { int.random(100 - v) }),
+        )
+      }),
+      benchmark.Data(label: "1000 items", data: {
+        #(
+          result.lazy_unwrap(treelist.from_list(l1000), fn() { panic }),
+          l1000,
+          list.range(0, 500)
+            |> list.map(fn(v) { int.random(1000 - v) }),
+        )
+      }),
+      benchmark.Data(label: "10000 items", data: {
+        #(
+          result.lazy_unwrap(treelist.from_list(l10000), fn() { panic }),
+          l10000,
+          list.range(0, 5000)
+            |> list.map(fn(v) { int.random(10_000 - v) }),
+        )
+      }),
+    ],
+  )
+}
+
+@target(erlang)
 fn list_iterator_benchmark() {
   benchmark.run(
     [
@@ -43,6 +151,7 @@ fn list_iterator_benchmark() {
   )
 }
 
+@target(erlang)
 fn list_benchmark() {
   let gen_data = fn(count: Int) {
     benchmark.Data(
@@ -129,6 +238,7 @@ fn list_benchmark() {
   )
 }
 
+@target(erlang)
 fn map_benchmark() {
   let gen_data = fn(count: Int) {
     benchmark.Data(
