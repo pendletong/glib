@@ -285,3 +285,96 @@ pub fn to_iterator_reverse_test() {
   |> iterator.to_list
   |> should.equal(list.reverse(l))
 }
+
+pub fn index_of_test() {
+  let l =
+    list.range(0, 99)
+    |> treelist.from_list
+    |> should.be_ok
+  l
+  |> treelist.index_of(49)
+  |> should.equal(49)
+
+  l
+  |> treelist.index_of(0)
+  |> should.equal(0)
+
+  l
+  |> treelist.index_of(99)
+  |> should.equal(99)
+
+  l
+  |> treelist.index_of(999)
+  |> should.equal(-1)
+
+  let l =
+    treelist.set(l, 49, 999)
+    |> should.be_ok
+  l
+  |> treelist.index_of(49)
+  |> should.equal(-1)
+  l
+  |> treelist.index_of(999)
+  |> should.equal(49)
+}
+
+pub fn last_index_of_test() {
+  let l =
+    list.range(0, 99)
+    |> treelist.from_list
+    |> should.be_ok
+  l
+  |> treelist.last_index_of(49)
+  |> should.equal(49)
+
+  l
+  |> treelist.last_index_of(0)
+  |> should.equal(0)
+
+  l
+  |> treelist.last_index_of(99)
+  |> should.equal(99)
+
+  l
+  |> treelist.last_index_of(999)
+  |> should.equal(-1)
+
+  let l =
+    treelist.set(l, 99, 49)
+    |> should.be_ok
+
+  l
+  |> treelist.last_index_of(49)
+  |> should.equal(99)
+  l
+  |> treelist.index_of(49)
+  |> should.equal(49)
+
+  treelist.from_list([9, 9, 9, 9, 9])
+  |> should.be_ok
+  |> treelist.last_index_of(9)
+  |> should.equal(4)
+}
+
+pub fn set_test() {
+  treelist.set(treelist.new(), 0, "New")
+  |> should.be_error
+
+  let l =
+    treelist.from_list([0, 0, 0, 0, 0])
+    |> should.be_ok
+
+  treelist.to_list(l) |> should.equal([0, 0, 0, 0, 0])
+
+  treelist.set(l, 2, 999)
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([0, 0, 999, 0, 0])
+
+  treelist.set(l, 4, 999)
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([0, 0, 0, 0, 999])
+
+  treelist.set(l, 5, 999) |> should.be_error
+}

@@ -455,11 +455,9 @@ fn find_gap(
           case position {
             position if position == last_position -> Ok(#(-1, False))
             0 -> {
-              // io.debug("_")
               find_gap(map, key, last_position, map.size - 1)
             }
             position -> {
-              // io.debug("+")
               find_gap(map, key, last_position, position - 1)
             }
           }

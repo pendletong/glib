@@ -13,7 +13,6 @@ import gleam/iterator.{type Iterator, Done, Next}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order.{Eq, Gt, Lt}
-import gleam/result
 
 pub opaque type TreeList(value) {
   TreeList(root: Node(value))
@@ -21,30 +20,27 @@ pub opaque type TreeList(value) {
 
 pub opaque type Node(value) {
   Node(
-    value: Option(value),
+    value: value,
     height: Int,
     size: Int,
-    left: Option(Node(value)),
-    right: Option(Node(value)),
+    left: Node(value),
+    right: Node(value),
   )
-}
-
-fn blank_node() -> Node(value) {
-  Node(None, 0, 0, None, None)
+  BlankNode
 }
 
 fn new_node(value: value) -> Node(value) {
-  Node(Some(value), 1, 1, Some(blank_node()), Some(blank_node()))
+  Node(value, 1, 1, BlankNode, BlankNode)
 }
 
 /// Creates an empty treelist
 pub fn new() -> TreeList(value) {
-  TreeList(blank_node())
+  TreeList(BlankNode)
 }
 
 /// Returns the number of elements in the provided treelist
 pub fn size(list: TreeList(value)) -> Int {
-  list.root.size
+  get_size(list.root)
 }
 
 /// Returns the element at the specified position in the provided treelist
@@ -70,46 +66,10 @@ pub fn size(list: TreeList(value)) -> Int {
 /// 
 pub fn get(list: TreeList(value), index: Int) -> Result(value, Nil) {
   use <- bool.guard(index < 0 || index >= size(list), return: Error(Nil))
-
-  use node <- result.try(
-    list.root
-    |> get_node_at(index),
-  )
-
-  case node.value {
-    Some(value) -> Ok(value)
-    None -> Error(Nil)
+  case get_node_at(list.root, index) {
+    Node(value, ..) -> Ok(value)
+    BlankNode -> Error(Nil)
   }
-}
-
-/// Updates the element at index specified in the provided treelist
-/// 
-/// Returns an Error(Nil) if the index is outside the allowed range
-/// 
-/// Index is zero based
-/// 
-/// Returns a new TreeList containing the updated node
-/// 
-/// ```gleam
-/// let list = new()
-/// let assert Ok(new_list) = add(list, "Test")
-/// get(new_list, 0)
-/// // -> Ok("Test")
-/// let assert Ok(new_list) = set(list, 0, "Updated")
-/// get(new_list, 0)
-/// // -> Ok("Updated")
-/// ```
-/// 
-pub fn set(
-  list: TreeList(value),
-  index: Int,
-  value: value,
-) -> Result(TreeList(value), Nil) {
-  use <- bool.guard(index < 0 || index >= size(list), return: Error(Nil))
-
-  use new_root <- result.try(set_node_at(list.root, index, value))
-
-  Ok(TreeList(new_root))
 }
 
 /// Adds an element to the end of the provided treelist
@@ -156,42 +116,35 @@ pub fn insert(
 ) -> Result(TreeList(value), Nil) {
   use <- bool.guard(when: index < 0 || index > size(list), return: Error(Nil))
   use <- bool.guard(when: index > get_max_int(), return: Error(Nil))
-  use new_root <- result.try(insert_node_at(list.root, index, value))
-  Ok(TreeList(new_root))
+  Ok(TreeList(insert_node_at(list.root, index, value)))
 }
 
-/// Removes an element at the specified index in the provided treelist
+/// Updates the element at index specified in the provided treelist
 /// 
 /// Returns an Error(Nil) if the index is outside the allowed range
 /// 
 /// Index is zero based
 /// 
-/// Returns a tuple containing the value at the specified index and the new TreeList
+/// Returns a new TreeList containing the updated node
 /// 
 /// ```gleam
 /// let list = new()
-/// let assert Ok(new_list) = insert(list, 0, "Test")
+/// let assert Ok(new_list) = add(list, "Test")
 /// get(new_list, 0)
 /// // -> Ok("Test")
-/// remove(new_list, 0)
-/// // -> #("Test", TreeList(..))
+/// let assert Ok(new_list) = set(list, 0, "Updated")
+/// get(new_list, 0)
+/// // -> Ok("Updated")
 /// ```
 /// 
-/// ```gleam
-/// let list = new()
-/// remove(list, 1)
-/// // -> Error(Nil)
-/// ```
-/// 
-pub fn remove(
+pub fn set(
   list: TreeList(value),
   index: Int,
-) -> Result(#(value, TreeList(value)), Nil) {
-  use <- bool.guard(when: index < 0 || index > size(list), return: Error(Nil))
+  value: value,
+) -> Result(TreeList(value), Nil) {
+  use <- bool.guard(index < 0 || index >= size(list), return: Error(Nil))
 
-  use #(new_root, value) <- result.try(remove_node_at(list.root, index))
-
-  Ok(#(value, TreeList(new_root)))
+  Ok(TreeList(set_node_at(list.root, index, value)))
 }
 
 /// Converts a TreeList into a standard Gleam list
@@ -223,13 +176,48 @@ pub fn from_list(list: List(value)) -> Result(TreeList(value), Nil) {
   list.try_fold(list, new(), fn(acc, val) { add(acc, val) })
 }
 
+/// Removes an element at the specified index in the provided treelist
+/// 
+/// Returns an Error(Nil) if the index is outside the allowed range
+/// 
+/// Index is zero based
+/// 
+/// Returns a tuple containing the value at the specified index and the new TreeList
+/// 
+/// ```gleam
+/// let list = new()
+/// let assert Ok(new_list) = insert(list, 0, "Test")
+/// get(new_list, 0)
+/// // -> Ok("Test")
+/// remove(new_list, 0)
+/// // -> #("Test", TreeList(..))
+/// ```
+/// 
+/// ```gleam
+/// let list = new()
+/// remove(list, 1)
+/// // -> Error(Nil)
+/// ```
+/// 
+pub fn remove(
+  list: TreeList(value),
+  index: Int,
+) -> Result(#(value, TreeList(value)), Nil) {
+  use <- bool.guard(when: index < 0 || index > size(list), return: Error(Nil))
+
+  case remove_node_at(list.root, index) {
+    #(new_root, Some(value)) -> Ok(#(value, TreeList(new_root)))
+    _ -> Error(Nil)
+  }
+}
+
 /// Builds a list of a given value a given number of times.
 ///
 /// ## Examples
 ///
 /// ```gleam
 /// repeat("a", times: 0)
-/// // -> treelist.new()
+/// // -> new()
 /// ```
 ///
 /// ```gleam
@@ -239,14 +227,15 @@ pub fn from_list(list: List(value)) -> Result(TreeList(value), Nil) {
 /// ```
 ///
 pub fn repeat(item a: a, times times: Int) -> Result(TreeList(a), Nil) {
-  do_repeat(a, times, new())
+  use <- bool.guard(when: times > get_max_int(), return: Error(Nil))
+  Ok(TreeList(do_repeat(a, times, BlankNode)))
 }
 
 /// Creates an iterator that yields each element from the given treelist.
 ///
 ///
 /// ```gleam
-/// to_iterator(treelist.from_list([1, 2, 3, 4]))
+/// to_iterator(from_list([1, 2, 3, 4]))
 /// |> to_list
 /// // -> [1, 2, 3, 4]
 /// ```
@@ -259,7 +248,7 @@ pub fn to_iterator(tlist: TreeList(value)) -> Iterator(value) {
 ///
 ///
 /// ```gleam
-/// to_iterator_reverse(treelist.from_list([1, 2, 3, 4]))
+/// to_iterator_reverse(from_list([1, 2, 3, 4]))
 /// |> to_list
 /// // -> [4, 3, 2, 1]
 /// ```
@@ -272,17 +261,17 @@ pub fn to_iterator_reverse(tlist: TreeList(value)) -> Iterator(value) {
 /// in this list, or -1 if this list does not contain the element.
 /// 
 /// ```gleam
-/// index_of(treelist.from_list([1, 2, 3, 4]), 3)
+/// index_of(from_list([1, 2, 3, 4]), 3)
 /// // -> 2
 /// ```
 /// 
 /// ```gleam
-/// index_of(treelist.from_list([1, 2, 3, 4, 2, 2]), 2)
+/// index_of(from_list([1, 2, 3, 4, 2, 2]), 2)
 /// // -> 1
 /// ```
 /// 
 /// ```gleam
-/// index_of(treelist.from_list([1, 2, 3, 4]), 999)
+/// index_of(from_list([1, 2, 3, 4]), 999)
 /// // -> -1
 /// ```
 ///
@@ -297,17 +286,17 @@ pub fn index_of(tlist: TreeList(value), item: value) -> Int {
 /// in this list, or -1 if this list does not contain the element.
 /// 
 /// ```gleam
-/// last_index_of(treelist.from_list([1, 2, 3, 4]), 3)
+/// last_index_of(from_list([1, 2, 3, 4]), 3)
 /// // -> 2
 /// ```
 /// 
 /// ```gleam
-/// last_index_of(treelist.from_list([1, 2, 3, 4, 2, 2]), 2)
+/// last_index_of(from_list([1, 2, 3, 4, 2, 2]), 2)
 /// // -> 5
 /// ```
 /// 
 /// ```gleam
-/// last_index_of(treelist.from_list([1, 2, 3, 4]), 999)
+/// last_index_of(from_list([1, 2, 3, 4]), 999)
 /// // -> -1
 /// ```
 ///
@@ -319,19 +308,21 @@ pub fn last_index_of(tlist: TreeList(value), item: value) -> Int {
     )
   {
     -1 -> -1
-    n -> tlist.root.size - n - 1
+    n -> {
+      get_size(tlist.root) - n - 1
+    }
   }
 }
 
 /// Returns true if this list contains the specified element.
 /// 
 /// ```gleam
-/// contains(treelist.from_list([1, 2, 3, 4]), 3)
+/// contains(from_list([1, 2, 3, 4]), 3)
 /// // -> True
 /// ```
 /// 
 /// ```gleam
-/// contains(treelist.from_list([1, 2, 3, 4]), 999)
+/// contains(from_list([1, 2, 3, 4]), 999)
 /// // -> False
 /// ```
 /// 
@@ -354,6 +345,305 @@ pub fn filter(
 
 // Internal functions
 
+fn get_size(node: Node(value)) -> Int {
+  case node {
+    BlankNode -> 0
+    Node(size:, ..) -> size
+  }
+}
+
+fn get_height(node: Node(value)) -> Int {
+  case node {
+    BlankNode -> 0
+    Node(height:, ..) -> height
+  }
+}
+
+fn get_node_at(node: Node(value), index: Int) -> Node(value) {
+  case node {
+    Node(left: left, right: right, ..) -> {
+      case int.compare(index, get_size(left)) {
+        Lt -> {
+          get_node_at(left, index)
+        }
+        Gt -> {
+          get_node_at(right, index - get_size(left) - 1)
+        }
+        Eq -> node
+      }
+    }
+    _ -> BlankNode
+  }
+}
+
+fn insert_node_at(
+  node: Node(value),
+  index: Int,
+  new_value: value,
+) -> Node(value) {
+  case node {
+    Node(left:, right:, size:, height:, value:) -> {
+      let left_size = get_size(left)
+      let res = case int.compare(index, left_size) {
+        Lt | Eq -> {
+          Node(
+            height:,
+            size:,
+            right:,
+            value:,
+            left: insert_node_at(left, index, new_value),
+          )
+        }
+        Gt -> {
+          Node(
+            height:,
+            size:,
+            left:,
+            value:,
+            right: insert_node_at(right, index - left_size - 1, new_value),
+          )
+        }
+      }
+      case recalculate(res) {
+        BlankNode -> BlankNode
+        node -> balance(node)
+      }
+    }
+    _ -> new_node(new_value)
+  }
+}
+
+fn recalculate(node: Node(value)) -> Node(value) {
+  case node {
+    Node(value:, left:, right:, ..) -> {
+      let new_height = int.max(get_height(left), get_height(right)) + 1
+      let new_size = get_size(left) + get_size(right) + 1
+      Node(value:, left:, right:, height: new_height, size: new_size)
+    }
+    _ -> BlankNode
+  }
+}
+
+fn balance(node: Node(value)) -> Node(value) {
+  case node {
+    Node(value:, height:, size:, left:, right:) -> {
+      case get_balance(left, right) {
+        -2 -> {
+          rotate_right(case balance_of(left) {
+            1 -> {
+              Node(value:, height:, size:, left: rotate_left(left), right:)
+            }
+            _ -> node
+          })
+        }
+        2 -> {
+          rotate_left(case balance_of(right) {
+            -1 -> {
+              Node(value:, height:, size:, left:, right: rotate_right(right))
+            }
+            _ -> node
+          })
+        }
+        _ -> node
+      }
+    }
+    _ -> BlankNode
+  }
+}
+
+fn rotate_left(node: Node(value)) -> Node(value) {
+  case node {
+    Node(
+      value:,
+      height:,
+      size:,
+      right: Node(
+        value: right_value,
+        height: right_height,
+        size: right_size,
+        left: right_left,
+        right: right_right,
+      ),
+      left:,
+    ) -> {
+      recalculate(Node(
+        value: right_value,
+        height: right_height,
+        size: right_size,
+        right: right_right,
+        left: recalculate(Node(
+          value: value,
+          height: height,
+          size: size,
+          right: right_left,
+          left: left,
+        )),
+      ))
+    }
+    _ -> BlankNode
+  }
+}
+
+fn rotate_right(node: Node(value)) -> Node(value) {
+  case node {
+    Node(
+      value:,
+      height:,
+      size:,
+      left: Node(
+        value: left_value,
+        height: left_height,
+        size: left_size,
+        left: left_left,
+        right: left_right,
+      ),
+      right:,
+    ) -> {
+      recalculate(Node(
+        value: left_value,
+        height: left_height,
+        size: left_size,
+        left: left_left,
+        right: recalculate(Node(
+          value: value,
+          height: height,
+          size: size,
+          left: left_right,
+          right: right,
+        )),
+      ))
+    }
+    _ -> BlankNode
+  }
+}
+
+fn balance_of(node: Node(_)) -> Int {
+  case node {
+    Node(left:, right:, ..) -> get_balance(left, right)
+    _ -> 9999
+  }
+}
+
+fn get_balance(left: Node(_), right: Node(_)) -> Int {
+  get_height(right) - get_height(left)
+}
+
+fn get_max_int() -> Int {
+  999_999
+}
+
+fn do_to_list(node: Node(value)) -> List(value) {
+  case node {
+    Node(value:, left:, right:, ..) -> {
+      let left_list = case left {
+        BlankNode -> []
+        _ -> do_to_list(left)
+      }
+      let right_list = case right {
+        BlankNode -> []
+        _ -> do_to_list(right)
+      }
+
+      list.append(left_list, [value, ..right_list])
+    }
+    _ -> []
+  }
+}
+
+fn remove_node_at(
+  node: Node(value),
+  index: Int,
+) -> #(Node(value), Option(value)) {
+  case node {
+    Node(value:, height:, size:, left:, right:) -> {
+      let #(res, removed_value, rebalance) = case
+        int.compare(index, get_size(left))
+      {
+        Lt -> {
+          case remove_node_at(left, index) {
+            #(new_node, Some(rval)) -> #(
+              Node(value:, height:, size:, left: new_node, right:),
+              Some(rval),
+              True,
+            )
+            _ -> #(BlankNode, None, False)
+          }
+        }
+        Gt -> {
+          case remove_node_at(right, index - get_size(left) - 1) {
+            #(new_node, Some(rval)) -> #(
+              Node(value:, height:, size:, left:, right: new_node),
+              Some(rval),
+              True,
+            )
+            _ -> #(BlankNode, None, False)
+          }
+        }
+        Eq -> {
+          case left, right {
+            BlankNode, BlankNode -> {
+              #(BlankNode, Some(value), False)
+            }
+            _, BlankNode -> {
+              #(left, Some(value), False)
+            }
+            BlankNode, _ -> {
+              #(right, Some(value), False)
+            }
+            _, _ -> {
+              let temp = find_ultimate_left(right)
+              case remove_node_at(right, 0), temp {
+                #(new_node, _), Node(unode_value, _, _, _, _) -> #(
+                  Node(
+                    value: unode_value,
+                    height:,
+                    size:,
+                    left:,
+                    right: new_node,
+                  ),
+                  Some(value),
+                  True,
+                )
+                _, _ -> #(BlankNode, None, False)
+              }
+            }
+          }
+        }
+      }
+
+      case rebalance {
+        False -> #(res, removed_value)
+        True -> {
+          case recalculate(res) {
+            BlankNode -> #(BlankNode, None)
+            node -> #(balance(node), removed_value)
+          }
+        }
+      }
+    }
+    _ -> #(BlankNode, None)
+  }
+}
+
+fn find_ultimate_left(node: Node(value)) -> Node(value) {
+  case node {
+    Node(_, _, _, left, _) -> {
+      case left {
+        BlankNode -> node
+        _ -> find_ultimate_left(left)
+      }
+    }
+    BlankNode -> panic
+  }
+}
+
+fn do_repeat(a: a, times: Int, acc: Node(a)) -> Node(a) {
+  case times <= 0 {
+    True -> acc
+    False -> do_repeat(a, times - 1, insert_node_at(acc, 0, a))
+  }
+}
+
 fn node_iterator(
   tlist: Node(value),
   ret_fn: fn(Node(value), value, Int) -> ret_type,
@@ -361,7 +651,7 @@ fn node_iterator(
   let stack = #(init_forward_stack(tlist, 0, []), 0)
   let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
-      #([Node(Some(value), _, _, _, Some(right)) as node, ..rest], index) -> {
+      #([Node(value:, right:, ..) as node, ..rest], index) -> {
         let rest = list.append(get_left_stack(right, []), rest)
         Next(ret_fn(node, value, index), #(rest, index + 1))
       }
@@ -379,7 +669,7 @@ fn node_iterator_reverse(
   let stack = #(init_backward_stack(tlist, 0, []), 0)
   let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
-      #([Node(Some(value), _, _, Some(left), _) as node, ..rest], index) -> {
+      #([Node(value:, left:, ..) as node, ..rest], index) -> {
         let rest = list.append(get_right_stack(left, []), rest)
         Next(ret_fn(node, value, index), #(rest, index + 1))
       }
@@ -390,18 +680,49 @@ fn node_iterator_reverse(
   iterator.unfold(stack, yield)
 }
 
+pub fn init_forward_stack(
+  node: Node(value),
+  index: Int,
+  acc: List(Node(value)),
+) -> List(Node(value)) {
+  case node {
+    BlankNode -> acc
+    Node(left:, right:, ..) -> {
+      let left_size = get_size(left)
+      case int.compare(index, left_size) {
+        Eq -> [node, ..acc]
+        Lt -> init_forward_stack(left, index, [node, ..acc])
+        Gt -> init_forward_stack(right, index - left_size + 1, acc)
+      }
+    }
+  }
+}
+
+pub fn init_backward_stack(
+  node: Node(value),
+  index: Int,
+  acc: List(Node(value)),
+) -> List(Node(value)) {
+  case node {
+    BlankNode -> acc
+    Node(left:, right:, ..) -> {
+      let right_size = get_size(right)
+      case int.compare(index, right_size) {
+        Eq -> [node, ..acc]
+        Lt -> init_backward_stack(right, index, [node, ..acc])
+        Gt -> init_backward_stack(left, index - right_size + 1, acc)
+      }
+    }
+  }
+}
+
 fn get_left_stack(
   node: Node(value),
   acc: List(Node(value)),
 ) -> List(Node(value)) {
   case node {
-    Node(None, 0, 0, None, None) -> acc
-    _ -> {
-      case node.left {
-        Some(left) -> get_left_stack(left, [node, ..acc])
-        _ -> acc
-      }
-    }
+    BlankNode -> acc
+    Node(left:, ..) -> get_left_stack(left, [node, ..acc])
   }
 }
 
@@ -410,67 +731,8 @@ fn get_right_stack(
   acc: List(Node(value)),
 ) -> List(Node(value)) {
   case node {
-    Node(None, 0, 0, None, None) -> acc
-    _ -> {
-      case node.right {
-        Some(right) -> get_right_stack(right, [node, ..acc])
-        _ -> acc
-      }
-    }
-  }
-}
-
-pub fn init_forward_stack(
-  node: Node(value),
-  index: Int,
-  acc: List(Node(value)),
-) -> List(Node(value)) {
-  case node {
-    Node(None, 0, 0, None, None) -> acc
-    _ -> {
-      case node.left {
-        Some(left) -> {
-          case int.compare(index, left.size) {
-            Eq -> [node, ..acc]
-            Lt -> init_forward_stack(left, index, [node, ..acc])
-            Gt ->
-              case node.right {
-                Some(right) ->
-                  init_forward_stack(right, index - left.size + 1, acc)
-                _ -> acc
-              }
-          }
-        }
-        _ -> acc
-      }
-    }
-  }
-}
-
-fn init_backward_stack(
-  node: Node(value),
-  index: Int,
-  acc: List(Node(value)),
-) -> List(Node(value)) {
-  case node {
-    Node(None, 0, 0, None, None) -> acc
-    _ -> {
-      case node.right {
-        Some(right) -> {
-          case int.compare(index, right.size) {
-            Eq -> [node, ..acc]
-            Lt -> init_backward_stack(right, index, [node, ..acc])
-            Gt ->
-              case node.left {
-                Some(left) ->
-                  init_backward_stack(left, index - right.size + 1, acc)
-                _ -> acc
-              }
-          }
-        }
-        _ -> acc
-      }
-    }
+    BlankNode -> acc
+    Node(right:, ..) -> get_right_stack(right, [node, ..acc])
   }
 }
 
@@ -486,281 +748,32 @@ fn do_index_of(it: Iterator(#(value, Int)), item: value) -> Int {
   }
 }
 
-fn do_to_list(node: Node(value)) -> List(value) {
+fn set_node_at(node: Node(value), index: Int, new_value: value) -> Node(value) {
   case node {
-    Node(Some(value), _, _, Some(left), Some(right)) -> {
-      let left_list = case left {
-        Node(None, 0, 0, None, None) -> []
-        _ -> do_to_list(left)
-      }
-      let right_list = case right {
-        Node(None, 0, 0, None, None) -> []
-        _ -> do_to_list(right)
-      }
-
-      list.append(left_list, [value, ..right_list])
-    }
-    _ -> []
-  }
-}
-
-fn remove_node_at(
-  node: Node(value),
-  index: Int,
-) -> Result(#(Node(value), value), Nil) {
-  case node.left, node.right, node.value {
-    Some(left), Some(right), Some(node_value) -> {
-      use #(res, removed_value, rebalance) <- result.try(case
-        int.compare(index, left.size)
-      {
+    Node(value:, height:, size:, left:, right:) -> {
+      let left_size = get_size(left)
+      case int.compare(index, left_size) {
         Lt -> {
-          use #(new_left, rval) <- result.try(remove_node_at(left, index))
-          Ok(#(Node(..node, left: Some(new_left)), rval, True))
+          Node(
+            value:,
+            size:,
+            height:,
+            left: set_node_at(left, index, new_value),
+            right:,
+          )
         }
         Gt -> {
-          use #(new_right, rval) <- result.try(remove_node_at(
-            right,
-            index - left.size - 1,
-          ))
-          Ok(#(Node(..node, right: Some(new_right)), rval, True))
+          Node(
+            value:,
+            size:,
+            height:,
+            left:,
+            right: set_node_at(right, index - left_size - 1, new_value),
+          )
         }
-        Eq -> {
-          case left, right {
-            Node(None, 0, 0, None, None), Node(None, 0, 0, None, None) -> {
-              Ok(#(blank_node(), node_value, False))
-            }
-            _, Node(None, 0, 0, None, None) -> {
-              Ok(#(left, node_value, False))
-            }
-            Node(None, 0, 0, None, None), _ -> {
-              Ok(#(right, node_value, False))
-            }
-            _, _ -> {
-              let temp = find_ultimate_left(right)
-              use #(new_right, _) <- result.try(remove_node_at(right, 0))
-              Ok(#(
-                Node(..node, right: Some(new_right), value: temp.value),
-                node_value,
-                True,
-              ))
-            }
-          }
-        }
-      })
-      case rebalance {
-        False -> Ok(#(res, removed_value))
-        True -> {
-          case recalculate(res) {
-            Error(_) -> Error(Nil)
-            Ok(node) -> {
-              use balanced <- result.try(balance(node))
-              Ok(#(balanced, removed_value))
-            }
-          }
-        }
+        Eq -> Node(value: new_value, size:, height:, left:, right:)
       }
     }
-    _, _, _ -> Error(Nil)
-  }
-}
-
-fn find_ultimate_left(node: Node(value)) -> Node(value) {
-  case node.left {
-    Some(Node(None, 0, 0, None, None)) -> node
-    Some(left) -> find_ultimate_left(left)
-    None -> panic
-  }
-}
-
-fn get_node_at(node: Node(value), index: Int) -> Result(Node(value), Nil) {
-  case node.left {
-    Some(left) -> {
-      case int.compare(index, left.size) {
-        Lt -> {
-          get_node_at(left, index)
-        }
-        Gt -> {
-          case node.right {
-            Some(right) -> get_node_at(right, index - left.size - 1)
-            _ -> Error(Nil)
-          }
-        }
-        Eq -> Ok(node)
-      }
-    }
-    _ -> Error(Nil)
-  }
-}
-
-fn set_node_at(
-  node: Node(value),
-  index: Int,
-  value: value,
-) -> Result(Node(value), Nil) {
-  case node.left {
-    Some(left) -> {
-      case int.compare(index, left.size) {
-        Lt -> {
-          use new_left <- result.try(set_node_at(left, index, value))
-
-          Ok(Node(..node, left: Some(new_left)))
-        }
-        Gt -> {
-          case node.right {
-            Some(right) -> {
-              use new_right <- result.try(set_node_at(
-                right,
-                index - left.size - 1,
-                value,
-              ))
-              Ok(Node(..node, right: Some(new_right)))
-            }
-            _ -> Error(Nil)
-          }
-        }
-        Eq -> Ok(Node(..node, value: Some(value)))
-      }
-    }
-    _ -> Error(Nil)
-  }
-}
-
-fn insert_node_at(
-  node: Node(value),
-  index: Int,
-  value: value,
-) -> Result(Node(value), Nil) {
-  case node {
-    Node(None, 0, 0, None, None) -> Ok(new_node(value))
-    _ -> {
-      case node.left {
-        Some(left) -> {
-          use res <- result.try(case int.compare(index, left.size) {
-            Lt | Eq -> {
-              use new_left <- result.try(insert_node_at(left, index, value))
-              Ok(Node(..node, left: Some(new_left)))
-            }
-            Gt -> {
-              case node.right {
-                Some(right) -> {
-                  use new_right <- result.try(insert_node_at(
-                    right,
-                    index - left.size - 1,
-                    value,
-                  ))
-                  Ok(Node(..node, right: Some(new_right)))
-                }
-                _ -> Error(Nil)
-              }
-            }
-          })
-          case recalculate(res) {
-            Error(_) -> Error(Nil)
-            Ok(node) -> balance(node)
-          }
-        }
-        _ -> Error(Nil)
-      }
-    }
-  }
-}
-
-fn recalculate(node: Node(value)) -> Result(Node(value), Nil) {
-  case node.left, node.right {
-    Some(left), Some(right) -> {
-      let new_height = int.max(left.height, right.height) + 1
-      let new_size = left.size + right.size + 1
-
-      Ok(Node(..node, height: new_height, size: new_size))
-    }
-    _, _ -> Error(Nil)
-  }
-}
-
-fn balance(node: Node(value)) -> Result(Node(value), Nil) {
-  case node.left, node.right {
-    Some(left), Some(right) -> {
-      let balance = get_balance(left, right)
-      let result = case balance {
-        -2 -> {
-          let left_balance = balance_of(left)
-
-          use node <- result.try(case left_balance {
-            1 -> {
-              use rotated_left <- result.try(rotate_left(left))
-              Ok(Node(..node, left: Some(rotated_left)))
-            }
-            _ -> Ok(node)
-          })
-          rotate_right(node)
-        }
-        2 -> {
-          let right_balance = balance_of(right)
-
-          use node <- result.try(case right_balance {
-            -1 -> {
-              use rotated_right <- result.try(rotate_right(right))
-              Ok(Node(..node, right: Some(rotated_right)))
-            }
-            _ -> Ok(node)
-          })
-          rotate_left(node)
-        }
-        _ -> Ok(node)
-      }
-      case result {
-        Error(_) -> Error(Nil)
-        Ok(_) -> result
-      }
-    }
-    _, _ -> Error(Nil)
-  }
-}
-
-fn rotate_left(node: Node(value)) -> Result(Node(value), Nil) {
-  case node.right {
-    Some(root) -> {
-      use new_node <- result.try(recalculate(Node(..node, right: root.left)))
-
-      recalculate(Node(..root, left: Some(new_node)))
-    }
-    _ -> Error(Nil)
-  }
-}
-
-fn rotate_right(node: Node(value)) -> Result(Node(value), Nil) {
-  case node.left {
-    Some(root) -> {
-      use new_node <- result.try(recalculate(Node(..node, left: root.right)))
-
-      recalculate(Node(..root, right: Some(new_node)))
-    }
-    _ -> Error(Nil)
-  }
-}
-
-fn balance_of(node: Node(_)) -> Int {
-  case node.left, node.right {
-    Some(left), Some(right) -> get_balance(left, right)
-    _, _ -> 9999
-  }
-}
-
-fn get_balance(left: Node(_), right: Node(_)) -> Int {
-  right.height - left.height
-}
-
-fn get_max_int() -> Int {
-  999_999
-}
-
-fn do_repeat(a: a, times: Int, acc: TreeList(a)) -> Result(TreeList(a), Nil) {
-  case times <= 0 {
-    True -> Ok(acc)
-    False ->
-      case insert(acc, 0, a) {
-        Error(_) -> Error(Nil)
-        Ok(new_list) -> do_repeat(a, times - 1, new_list)
-      }
+    _ -> BlankNode
   }
 }
