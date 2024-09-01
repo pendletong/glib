@@ -508,8 +508,6 @@ fn remove_node_at(
   node: Node(value),
   index: Int,
 ) -> Result(#(Node(value), value), Nil) {
-  use <- bool.guard(when: index < 0 || index >= node.size, return: Error(Nil))
-
   case node.left, node.right, node.value {
     Some(left), Some(right), Some(node_value) -> {
       use #(res, removed_value, rebalance) <- result.try(case
@@ -668,33 +666,10 @@ fn insert_node_at(
 }
 
 fn recalculate(node: Node(value)) -> Result(Node(value), Nil) {
-  use <- bool.guard(
-    when: case node {
-      Node(None, 0, 0, None, None) -> True
-      _ -> False
-    },
-    return: Error(Nil),
-  )
-
   case node.left, node.right {
     Some(left), Some(right) -> {
-      use <- bool.guard(
-        when: left.height < 0 || right.height < 0,
-        return: Error(Nil),
-      )
-
-      use <- bool.guard(
-        when: left.size < 0 || right.size < 0,
-        return: Error(Nil),
-      )
-
       let new_height = int.max(left.height, right.height) + 1
       let new_size = left.size + right.size + 1
-
-      use <- bool.guard(
-        when: new_height < 0 || new_size < 0,
-        return: Error(Nil),
-      )
 
       Ok(Node(..node, height: new_height, size: new_size))
     }
@@ -706,17 +681,9 @@ fn balance(node: Node(value)) -> Result(Node(value), Nil) {
   case node.left, node.right {
     Some(left), Some(right) -> {
       let balance = get_balance(left, right)
-      use <- bool.guard(
-        when: int.absolute_value(balance) > 2,
-        return: Error(Nil),
-      )
       let result = case balance {
         -2 -> {
           let left_balance = balance_of(left)
-          use <- bool.guard(
-            when: int.absolute_value(left_balance) > 1,
-            return: Error(Nil),
-          )
 
           use node <- result.try(case left_balance {
             1 -> {
@@ -729,10 +696,6 @@ fn balance(node: Node(value)) -> Result(Node(value), Nil) {
         }
         2 -> {
           let right_balance = balance_of(right)
-          use <- bool.guard(
-            when: int.absolute_value(right_balance) > 1,
-            return: Error(Nil),
-          )
 
           use node <- result.try(case right_balance {
             -1 -> {
@@ -747,14 +710,7 @@ fn balance(node: Node(value)) -> Result(Node(value), Nil) {
       }
       case result {
         Error(_) -> Error(Nil)
-        Ok(r) -> {
-          use <- bool.guard(
-            when: int.absolute_value(balance_of(r)) > 1,
-            return: Error(Nil),
-          )
-
-          result
-        }
+        Ok(_) -> result
       }
     }
     _, _ -> Error(Nil)
@@ -762,14 +718,6 @@ fn balance(node: Node(value)) -> Result(Node(value), Nil) {
 }
 
 fn rotate_left(node: Node(value)) -> Result(Node(value), Nil) {
-  use <- bool.guard(
-    when: case node.right {
-      Some(Node(None, 0, 0, None, None)) -> True
-      _ -> False
-    },
-    return: Error(Nil),
-  )
-
   case node.right {
     Some(root) -> {
       use new_node <- result.try(recalculate(Node(..node, right: root.left)))
@@ -781,14 +729,6 @@ fn rotate_left(node: Node(value)) -> Result(Node(value), Nil) {
 }
 
 fn rotate_right(node: Node(value)) -> Result(Node(value), Nil) {
-  use <- bool.guard(
-    when: case node.left {
-      Some(Node(None, 0, 0, None, None)) -> True
-      _ -> False
-    },
-    return: Error(Nil),
-  )
-
   case node.left {
     Some(root) -> {
       use new_node <- result.try(recalculate(Node(..node, left: root.right)))
