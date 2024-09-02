@@ -660,6 +660,30 @@ pub fn wrap(val: value) -> TreeList(value) {
   TreeList(insert_node_at(BlankNode, 0, val))
 }
 
+/// Joins one treelist onto the end of another.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let assert Ok(l1) = treelist.from_list([1, 2])
+/// let assert Ok(l2) = treelist.from_list([3])
+/// let assert Ok(list) = append(l1, l2)
+/// to_list(list)
+/// // -> [1, 2, 3]
+/// ```
+///
+pub fn append(
+  tlist: TreeList(value),
+  tlist2: TreeList(value),
+) -> Result(TreeList(value), Nil) {
+  use <- bool.guard(
+    when: size(tlist) + size(tlist2) > get_max_int(),
+    return: Error(Nil),
+  )
+
+  Ok(TreeList(do_append(get_left_stack(tlist2.root, []), tlist.root)))
+}
+
 // Internal functions
 
 fn get_size(node: Node(value)) -> Int {
@@ -1202,5 +1226,17 @@ fn do_take(
       }
     }
     False -> acc
+  }
+}
+
+fn do_append(node_stack: List(Node(value)), acc: Node(value)) -> Node(value) {
+  case node_stack {
+    [Node(value:, right:, ..), ..rest] -> {
+      do_append(
+        list.append(get_left_stack(right, []), rest),
+        insert_node_at(acc, get_size(acc), value),
+      )
+    }
+    _ -> acc
   }
 }

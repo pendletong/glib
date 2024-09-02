@@ -639,3 +639,58 @@ pub fn wrap_test() {
   |> treelist.to_list
   |> should.equal([[[1, 2, 3]]])
 }
+
+pub fn append_test() {
+  let assert Ok(l1) = treelist.from_list([1])
+  let assert Ok(l23) = treelist.from_list([2, 3])
+  let assert Ok(l12) = treelist.from_list([1, 2])
+  let assert Ok(l34) = treelist.from_list([3, 4])
+  let assert Ok(l123) = treelist.from_list([1, 2, 3])
+  let assert Ok(l1234) = treelist.from_list([1, 2, 3, 4])
+  let assert Ok(l4) = treelist.from_list([4])
+  let assert Ok(l5) = treelist.from_list([5])
+  treelist.append(l1, l23)
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([1, 2, 3])
+
+  treelist.append(l12, treelist.new())
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([1, 2])
+
+  treelist.append(treelist.new(), l12)
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([1, 2])
+
+  treelist.append(l12, l34)
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([1, 2, 3, 4])
+
+  treelist.append(l123, treelist.new())
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([1, 2, 3])
+
+  treelist.append(l123, l4)
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([1, 2, 3, 4])
+
+  treelist.append(l1234, l5)
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([1, 2, 3, 4, 5])
+
+  treelist.append(treelist.new(), treelist.new())
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([])
+
+  // TCO test
+  let assert Ok(list) = treelist.repeat(0, recursion_test_cycles)
+  list
+  |> treelist.append(l1)
+}
