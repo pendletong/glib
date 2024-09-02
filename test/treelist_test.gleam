@@ -415,6 +415,15 @@ pub fn filter_test() {
   treelist.filter(l, fn(el) { el >= 0 })
   |> treelist.size
   |> should.equal(100)
+
+  treelist.filter(treelist.new(), fn(_el) { True })
+  |> should.equal(treelist.new())
+
+  // TCO test
+  list.range(0, recursion_test_cycles)
+  |> treelist.from_list
+  |> should.be_ok
+  |> treelist.filter(fn(x) { x == -1 })
 }
 
 pub fn reverse_test() {
