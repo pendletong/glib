@@ -613,3 +613,29 @@ pub fn take_test() {
   list
   |> treelist.take(recursion_test_cycles)
 }
+
+pub fn wrap_test() {
+  treelist.wrap([])
+  |> treelist.to_list
+  |> should.equal([[]])
+
+  treelist.wrap([[]])
+  |> treelist.to_list
+  |> should.equal([[[]]])
+
+  treelist.wrap(Nil)
+  |> treelist.to_list
+  |> should.equal([Nil])
+
+  treelist.wrap(1)
+  |> treelist.to_list
+  |> should.equal([1])
+
+  treelist.wrap([1, 2])
+  |> treelist.to_list
+  |> should.equal([[1, 2]])
+
+  treelist.wrap([[1, 2, 3]])
+  |> treelist.to_list
+  |> should.equal([[[1, 2, 3]]])
+}

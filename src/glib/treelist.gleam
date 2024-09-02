@@ -637,6 +637,29 @@ pub fn take(tlist: TreeList(value), up_to_n: Int) -> TreeList(value) {
   }
 }
 
+/// Returns the given item wrapped in a list.
+///
+/// ## Examples
+///
+/// ```gleam
+/// wrap(1)
+/// |> to_list
+/// // -> [1]
+///
+/// wrap(["a", "b", "c"])
+/// |> to_list
+/// // -> [["a", "b", "c"]]
+///
+/// wrap([[]])
+/// |> to_list
+/// // -> [[[]]]
+/// ```
+///
+///
+pub fn wrap(val: value) -> TreeList(value) {
+  TreeList(insert_node_at(BlankNode, 0, val))
+}
+
 // Internal functions
 
 fn get_size(node: Node(value)) -> Int {
