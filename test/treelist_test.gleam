@@ -462,3 +462,21 @@ pub fn last_test() {
   treelist.last(treelist.new())
   |> should.equal(Error(Nil))
 }
+
+pub fn contains_test() {
+  let assert Ok(l) = treelist.from_list([0, 4, 5, 1])
+  treelist.contains(l, 1)
+  |> should.be_true
+
+  let assert Ok(l) = treelist.from_list([0, 4, 5, 7])
+  treelist.contains(l, 1)
+  |> should.be_false
+
+  treelist.contains(treelist.new(), 1)
+  |> should.be_false
+
+  // TCO test
+  let assert Ok(l) = treelist.repeat(0, recursion_test_cycles)
+  l
+  |> treelist.contains(1)
+}
