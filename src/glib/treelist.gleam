@@ -371,6 +371,20 @@ pub fn reverse(tlist: TreeList(value)) -> TreeList(value) {
   TreeList(do_reverse(tlist.root))
 }
 
+pub fn first(tlist: TreeList(value)) -> Result(value, Nil) {
+  case size(tlist) {
+    0 -> Error(Nil)
+    _ -> get(tlist, 0)
+  }
+}
+
+pub fn last(tlist: TreeList(value)) -> Result(value, Nil) {
+  case size(tlist) {
+    0 -> Error(Nil)
+    size -> get(tlist, size - 1)
+  }
+}
+
 // Internal functions
 
 fn get_size(node: Node(value)) -> Int {

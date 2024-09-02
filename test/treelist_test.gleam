@@ -444,3 +444,21 @@ pub fn reverse_test() {
   l
   |> treelist.reverse
 }
+
+pub fn first_test() {
+  let assert Ok(l) = treelist.from_list([0, 4, 5, 7])
+  treelist.first(l)
+  |> should.equal(Ok(0))
+
+  treelist.first(treelist.new())
+  |> should.equal(Error(Nil))
+}
+
+pub fn last_test() {
+  let assert Ok(l) = treelist.from_list([0, 4, 5, 7])
+  treelist.last(l)
+  |> should.equal(Ok(7))
+
+  treelist.last(treelist.new())
+  |> should.equal(Error(Nil))
+}
