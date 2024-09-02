@@ -529,7 +529,7 @@ fn get_balance(left: Node(_), right: Node(_)) -> Int {
 }
 
 fn get_max_int() -> Int {
-  999_999
+  999_999_999_999
 }
 
 fn do_to_list(node: Node(value)) -> List(value) {
