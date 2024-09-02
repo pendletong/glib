@@ -194,26 +194,23 @@ pub fn remove_test() {
 
 pub fn mass_test() {
   let new_list =
-    iterator.range(1, 100_000)
-    |> iterator.try_fold(treelist.new(), fn(acc, i) {
-      treelist.insert(acc, 0, i)
-    })
+    list.range(1, 100_000)
+    |> list.try_fold(treelist.new(), fn(acc, i) { treelist.insert(acc, 0, i) })
     |> should.be_ok
   new_list |> treelist.size |> should.equal(100_000)
-
-  iterator.range(1, 100_000)
-  |> iterator.each(fn(i) {
+  list.range(1, 100_000)
+  |> list.each(fn(i) {
     treelist.get(new_list, i - 1) |> should.be_ok |> should.equal(100_001 - i)
   })
 
   let new_list =
-    iterator.range(1, 100_000)
-    |> iterator.try_fold(treelist.new(), fn(acc, i) { treelist.add(acc, i) })
+    list.range(1, 100_000)
+    |> list.try_fold(treelist.new(), fn(acc, i) { treelist.add(acc, i) })
     |> should.be_ok
   new_list |> treelist.size |> should.equal(100_000)
 
-  iterator.range(1, 100_000)
-  |> iterator.each(fn(i) {
+  list.range(1, 100_000)
+  |> list.each(fn(i) {
     treelist.get(new_list, i - 1) |> should.be_ok |> should.equal(i)
   })
 
