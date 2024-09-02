@@ -541,3 +541,30 @@ pub fn map_test() {
   |> should.be_ok
   |> treelist.map(fn(x) { x })
 }
+
+pub fn try_map_test() {
+  let fun = fn(x) {
+    case x == 6 || x == 5 || x == 4 {
+      True -> Ok(x * 2)
+      False -> Error(x)
+    }
+  }
+
+  let assert Ok(l) = treelist.from_list([5, 6, 5, 6])
+
+  l
+  |> treelist.try_map(fun)
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([10, 12, 10, 12])
+
+  let assert Ok(l) = treelist.from_list([4, 6, 5, 7, 3])
+  l
+  |> treelist.try_map(fun)
+  |> should.equal(Error(7))
+
+  // TCO test
+  treelist.repeat(6, recursion_test_cycles)
+  |> should.be_ok
+  |> treelist.try_map(fun)
+}

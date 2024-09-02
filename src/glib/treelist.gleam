@@ -518,6 +518,55 @@ pub fn map(
   TreeList(do_map(stack, BlankNode, filter_fn))
 }
 
+/// Takes a function that returns a `Result` and applies it to each element in a
+/// given treelist in turn.
+///
+/// If the function returns `Ok(new_value)` for all elements in the treelist then a
+/// treelist of the new values is returned.
+///
+/// If the function returns `Error(reason)` for any of the elements then it is
+/// returned immediately. None of the elements in the treelist are processed after
+/// one returns an `Error`.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([1, 2, 3])
+/// let assert Ok(tl) = try_map(list, fn(x) { Ok(x + 2) })
+/// treelist.to_list(tl)
+/// // -> [3, 4, 5]
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([1, 2, 3])
+/// try_map(list, fn(_) { Error(0) })
+/// // -> Error(0)
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([[1], [2, 3]])
+/// let assert Ok(tl) = try_map(list, first)
+/// treelist.to_list(tl)
+/// // -> Ok([1, 2])
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([[1], [], [2]])
+/// try_map(list, first)
+/// // -> Error(Nil)
+/// ```
+///
+pub fn try_map(
+  tlist: TreeList(value),
+  filter_fn: fn(value) -> Result(value2, err),
+) -> Result(TreeList(value2), err) {
+  let stack = get_left_stack(tlist.root, [])
+  case do_try_map(stack, BlankNode, filter_fn) {
+    Error(err) -> Error(err)
+    Ok(node) -> Ok(TreeList(node))
+  }
+}
+
 // Internal functions
 
 fn get_size(node: Node(value)) -> Int {
@@ -1017,5 +1066,26 @@ pub fn do_reverse(node: Node(value)) -> Node(value) {
         size:,
       )
     _ -> node
+  }
+}
+
+fn do_try_map(
+  node_stack: List(Node(value)),
+  acc: Node(value2),
+  filter_fn: fn(value) -> Result(value2, err),
+) -> Result(Node(value2), err) {
+  case node_stack {
+    [Node(value:, right:, ..), ..rest] -> {
+      case filter_fn(value) {
+        Error(err) -> Error(err)
+        Ok(value) ->
+          do_try_map(
+            list.append(get_left_stack(right, []), rest),
+            insert_node_at(acc, get_size(acc), value),
+            filter_fn,
+          )
+      }
+    }
+    _ -> Ok(acc)
   }
 }
