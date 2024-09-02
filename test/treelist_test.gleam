@@ -1,10 +1,20 @@
 import gleam/int
-import gleam/io
 import gleam/iterator
 import gleam/list
 import gleam/result
 import gleeunit/should
 import glib/treelist
+
+@target(erlang)
+const recursion_test_cycles = 1_000_000
+
+// JavaScript engines crash when exceeding a certain stack size:
+//
+// - Chrome 106 and NodeJS V16, V18, and V19 crash around 10_000+
+// - Firefox 106 crashes around 35_000+.
+// - Safari 16 crashes around 40_000+.
+@target(javascript)
+const recursion_test_cycles = 40_000
 
 pub fn new_test() {
   treelist.new()
@@ -405,4 +415,32 @@ pub fn filter_test() {
   treelist.filter(l, fn(el) { el >= 0 })
   |> treelist.size
   |> should.equal(100)
+}
+
+pub fn reverse_test() {
+  treelist.reverse(treelist.new())
+  |> should.equal(treelist.new())
+
+  let assert Ok(l) = treelist.from_list([1])
+  l
+  |> treelist.reverse
+  |> treelist.to_list
+  |> should.equal([1])
+
+  let assert Ok(l) = treelist.from_list([1, 2])
+  l
+  |> treelist.reverse
+  |> treelist.to_list
+  |> should.equal([2, 1])
+
+  let assert Ok(l) = treelist.from_list([1, 2, 3, 4, 5])
+  l
+  |> treelist.reverse
+  |> treelist.to_list
+  |> should.equal([5, 4, 3, 2, 1])
+
+  // TCO test
+  let assert Ok(l) = treelist.repeat(0, recursion_test_cycles)
+  l
+  |> treelist.reverse
 }

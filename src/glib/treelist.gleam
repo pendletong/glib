@@ -276,7 +276,7 @@ pub fn to_iterator_reverse(tlist: TreeList(value)) -> Iterator(value) {
 /// ```
 ///
 pub fn index_of(tlist: TreeList(value), item: value) -> Int {
-  let stack = init_forward_stack(tlist.root, 0, [])
+  let stack = get_left_stack(tlist.root, [])
   do_index_of(stack, 0, item)
 }
 
@@ -299,7 +299,7 @@ pub fn index_of(tlist: TreeList(value), item: value) -> Int {
 /// ```
 ///
 pub fn last_index_of(tlist: TreeList(value), item: value) -> Int {
-  let stack = init_backward_stack(tlist.root, 0, [])
+  let stack = get_right_stack(tlist.root, [])
   do_last_index_of(stack, size(tlist) - 1, item)
 }
 
@@ -319,12 +319,56 @@ pub fn contains(tlist: TreeList(value), item: value) -> Bool {
   index_of(tlist, item) >= 0
 }
 
+/// Returns a new treelist containing only the elements from the first treelist for
+/// which the given functions returns `True`.
+///
+/// ## Examples
+///
+/// ```gleam
+/// filter(from_list([2, 4, 6, 1]), fn(x) { x > 2 })
+/// |> to_list
+/// // -> [4, 6]
+/// ```
+///
+/// ```gleam
+/// filter(from_list([2, 4, 6, 1]), fn(x) { x > 6 })
+/// |> to_list
+/// // -> []
+/// ```
+///
 pub fn filter(
   tlist: TreeList(value),
   filter_fn: fn(value) -> Bool,
 ) -> TreeList(value) {
-  let stack = init_forward_stack(tlist.root, 0, [])
+  let stack = get_left_stack(tlist.root, [])
   TreeList(do_filter(stack, BlankNode, filter_fn))
+}
+
+/// Creates a new treelist from a given treelist containing the same elements but in the
+/// opposite order.
+///
+/// ## Examples
+///
+/// ```gleam
+/// reverse(from_list([]))
+/// |> to_list
+/// // -> []
+/// ```
+///
+/// ```gleam
+/// reverse(from_list([1]))
+/// |> to_list
+/// // -> [1]
+/// ```
+///
+/// ```gleam
+/// reverse(from_list([1, 2]))
+/// |> to_list
+/// // -> [2, 1]
+/// ```
+///
+pub fn reverse(tlist: TreeList(value)) -> TreeList(value) {
+  TreeList(do_reverse(tlist.root))
 }
 
 // Internal functions
@@ -632,7 +676,7 @@ fn node_iterator(
   tlist: Node(value),
   ret_fn: fn(Node(value), value, Int) -> ret_type,
 ) -> Iterator(ret_type) {
-  let stack = #(init_forward_stack(tlist, 0, []), 0)
+  let stack = #(get_left_stack(tlist, []), 0)
   let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
       #([Node(value:, right:, ..) as node, ..rest], index) -> {
@@ -650,7 +694,7 @@ fn node_iterator_reverse(
   tlist: Node(value),
   ret_fn: fn(Node(value), value, Int) -> ret_type,
 ) -> Iterator(ret_type) {
-  let stack = #(init_backward_stack(tlist, 0, []), 0)
+  let stack = #(get_right_stack(tlist, []), 0)
   let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
       #([Node(value:, left:, ..) as node, ..rest], index) -> {
@@ -662,42 +706,6 @@ fn node_iterator_reverse(
   }
 
   iterator.unfold(stack, yield)
-}
-
-fn init_forward_stack(
-  node: Node(value),
-  index: Int,
-  acc: List(Node(value)),
-) -> List(Node(value)) {
-  case node {
-    BlankNode -> acc
-    Node(left:, right:, ..) -> {
-      let left_size = get_size(left)
-      case int.compare(index, left_size) {
-        Eq -> [node, ..acc]
-        Lt -> init_forward_stack(left, index, [node, ..acc])
-        Gt -> init_forward_stack(right, index - left_size + 1, acc)
-      }
-    }
-  }
-}
-
-fn init_backward_stack(
-  node: Node(value),
-  index: Int,
-  acc: List(Node(value)),
-) -> List(Node(value)) {
-  case node {
-    BlankNode -> acc
-    Node(left:, right:, ..) -> {
-      let right_size = get_size(right)
-      case int.compare(index, right_size) {
-        Eq -> [node, ..acc]
-        Lt -> init_backward_stack(right, index, [node, ..acc])
-        Gt -> init_backward_stack(left, index - right_size + 1, acc)
-      }
-    }
-  }
 }
 
 fn get_left_stack(
@@ -810,5 +818,19 @@ fn do_filter(
       )
     }
     _ -> acc
+  }
+}
+
+pub fn do_reverse(node: Node(value)) -> Node(value) {
+  case node {
+    Node(left:, right:, value:, height:, size:) ->
+      Node(
+        left: do_reverse(right),
+        right: do_reverse(left),
+        value:,
+        height:,
+        size:,
+      )
+    _ -> node
   }
 }
