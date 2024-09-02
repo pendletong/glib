@@ -167,7 +167,7 @@ pub fn to_list(l: TreeList(value)) -> List(value) {
 /// Returns an Error(Nil) in the case that the list is too large
 /// 
 /// ```gleam
-/// let list = from_list([1,2,3])
+/// let assert Ok(list) = from_list([1,2,3])
 /// get(list, 1)
 /// // -> Ok(2)
 /// ```
@@ -235,7 +235,8 @@ pub fn repeat(item a: a, times times: Int) -> Result(TreeList(a), Nil) {
 ///
 ///
 /// ```gleam
-/// to_iterator(from_list([1, 2, 3, 4]))
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// to_iterator(list)
 /// |> to_list
 /// // -> [1, 2, 3, 4]
 /// ```
@@ -248,7 +249,8 @@ pub fn to_iterator(tlist: TreeList(value)) -> Iterator(value) {
 ///
 ///
 /// ```gleam
-/// to_iterator_reverse(from_list([1, 2, 3, 4]))
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// to_iterator_reverse(list)
 /// |> to_list
 /// // -> [4, 3, 2, 1]
 /// ```
@@ -261,17 +263,20 @@ pub fn to_iterator_reverse(tlist: TreeList(value)) -> Iterator(value) {
 /// in this list, or -1 if this list does not contain the element.
 /// 
 /// ```gleam
-/// index_of(from_list([1, 2, 3, 4]), 3)
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// index_of(list, 3)
 /// // -> 2
 /// ```
 /// 
 /// ```gleam
-/// index_of(from_list([1, 2, 3, 4, 2, 2]), 2)
+/// let assert Ok(list) = from_list([1, 2, 3, 4, 2, 2])
+/// index_of(list, 2)
 /// // -> 1
 /// ```
 /// 
 /// ```gleam
-/// index_of(from_list([1, 2, 3, 4]), 999)
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// index_of(list, 999)
 /// // -> -1
 /// ```
 ///
@@ -284,17 +289,20 @@ pub fn index_of(tlist: TreeList(value), item: value) -> Int {
 /// in this list, or -1 if this list does not contain the element.
 /// 
 /// ```gleam
-/// last_index_of(from_list([1, 2, 3, 4]), 3)
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// last_index_of(list, 3)
 /// // -> 2
 /// ```
 /// 
 /// ```gleam
-/// last_index_of(from_list([1, 2, 3, 4, 2, 2]), 2)
+/// let assert Ok(list) = from_list([1, 2, 3, 4, 2, 2])
+/// last_index_of(list, 2)
 /// // -> 5
 /// ```
 /// 
 /// ```gleam
-/// last_index_of(from_list([1, 2, 3, 4]), 999)
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// last_index_of(list, 999)
 /// // -> -1
 /// ```
 ///
@@ -306,12 +314,14 @@ pub fn last_index_of(tlist: TreeList(value), item: value) -> Int {
 /// Returns true if this list contains the specified element.
 /// 
 /// ```gleam
-/// contains(from_list([1, 2, 3, 4]), 3)
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// contains(list, 3)
 /// // -> True
 /// ```
 /// 
 /// ```gleam
-/// contains(from_list([1, 2, 3, 4]), 999)
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// contains(list, 999)
 /// // -> False
 /// ```
 /// 
@@ -325,13 +335,15 @@ pub fn contains(tlist: TreeList(value), item: value) -> Bool {
 /// ## Examples
 ///
 /// ```gleam
-/// filter(from_list([2, 4, 6, 1]), fn(x) { x > 2 })
+/// let assert Ok(list) = from_list([2, 4, 6, 1])
+/// filter(list), fn(x) { x > 2 })
 /// |> to_list
 /// // -> [4, 6]
 /// ```
 ///
 /// ```gleam
-/// filter(from_list([2, 4, 6, 1]), fn(x) { x > 6 })
+/// let assert Ok(list) = from_list([2, 4, 6, 1])
+/// filter(list), fn(x) { x > 6 })
 /// |> to_list
 /// // -> []
 /// ```
@@ -350,19 +362,21 @@ pub fn filter(
 /// ## Examples
 ///
 /// ```gleam
-/// reverse(from_list([]))
+/// reverse(new())
 /// |> to_list
 /// // -> []
 /// ```
 ///
 /// ```gleam
-/// reverse(from_list([1]))
+/// let assert Ok(list) = from_list([1])
+/// reverse(list)
 /// |> to_list
 /// // -> [1]
 /// ```
 ///
 /// ```gleam
-/// reverse(from_list([1, 2]))
+/// let assert Ok(list) = from_list([1, 2])
+/// reverse(list)
 /// |> to_list
 /// // -> [2, 1]
 /// ```
@@ -371,6 +385,27 @@ pub fn reverse(tlist: TreeList(value)) -> TreeList(value) {
   TreeList(do_reverse(tlist.root))
 }
 
+/// Gets the first element from the start of the treelist, if there is one.
+///
+/// ## Examples
+///
+/// ```gleam
+/// first(new())
+/// // -> Error(Nil)
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([0])
+/// first(list)
+/// // -> Ok(0)
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([1, 2])
+/// first(list)
+/// // -> Ok(1)
+/// ```
+///
 pub fn first(tlist: TreeList(value)) -> Result(value, Nil) {
   case size(tlist) {
     0 -> Error(Nil)
@@ -378,6 +413,29 @@ pub fn first(tlist: TreeList(value)) -> Result(value, Nil) {
   }
 }
 
+/// Returns a new treelist minus the first element. If the treelist is empty, 
+/// `Error(Nil)` is returned.
+///
+///
+/// ## Examples
+///
+/// ```gleam
+/// rest(new())
+/// // -> Error(Nil)
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([0])
+/// rest(list)
+/// // -> Ok([])
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([1, 2])
+/// rest(list)
+/// // -> Ok([2])
+/// ```
+///
 pub fn rest(tlist: TreeList(value)) -> Result(TreeList(value), Nil) {
   case size(tlist) {
     0 -> Error(Nil)
@@ -386,6 +444,27 @@ pub fn rest(tlist: TreeList(value)) -> Result(TreeList(value), Nil) {
   }
 }
 
+/// Gets the last element from the start of the treelist, if there is one.
+///
+/// ## Examples
+///
+/// ```gleam
+/// last(new())
+/// // -> Error(Nil)
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([0])
+/// last(list)
+/// // -> Ok(0)
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([1, 2])
+/// last(list)
+/// // -> Ok(2)
+/// ```
+///
 pub fn last(tlist: TreeList(value)) -> Result(value, Nil) {
   case size(tlist) {
     0 -> Error(Nil)
@@ -393,6 +472,24 @@ pub fn last(tlist: TreeList(value)) -> Result(value, Nil) {
   }
 }
 
+/// Returns a new treelist containing only the elements from the first treelist for
+/// which the given functions returns `Ok(_)`.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([2, 4, 6, 1])
+/// filter_map(list, Error)
+/// // -> []
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([2, 4, 6, 1])
+/// filter_map(list, fn(x) { Ok(x + 1) })
+/// |> to_list
+/// // -> [3, 5, 7, 2]
+/// ```
+///
 pub fn filter_map(
   tlist: TreeList(value),
   filter_fn: fn(value) -> Result(value2, err),
@@ -401,6 +498,18 @@ pub fn filter_map(
   TreeList(do_filter_map(stack, BlankNode, filter_fn))
 }
 
+/// Returns a new treelist containing only the elements of the first list after 
+/// the function has been applied to each one.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([2, 4, 6])
+/// map(list, fn(x) { x * 2 })
+/// |> to_list
+/// // -> [4, 8, 12]
+/// ```
+///
 pub fn map(
   tlist: TreeList(value),
   filter_fn: fn(value) -> value2,
