@@ -393,6 +393,14 @@ pub fn last(tlist: TreeList(value)) -> Result(value, Nil) {
   }
 }
 
+pub fn filter_map(
+  tlist: TreeList(value),
+  filter_fn: fn(value) -> Result(value2, err),
+) -> TreeList(value2) {
+  let stack = get_left_stack(tlist.root, [])
+  TreeList(do_filter_map(stack, BlankNode, filter_fn))
+}
+
 // Internal functions
 
 fn get_size(node: Node(value)) -> Int {
@@ -835,6 +843,27 @@ fn do_filter(
           True -> insert_node_at(acc, get_size(acc), value)
           //add(acc, value)
           False -> acc
+        },
+        filter_fn,
+      )
+    }
+    _ -> acc
+  }
+}
+
+fn do_filter_map(
+  node_stack: List(Node(value)),
+  acc: Node(value2),
+  filter_fn: fn(value) -> Result(value2, err),
+) -> Node(value2) {
+  case node_stack {
+    [Node(value:, right:, ..), ..rest] -> {
+      do_filter_map(
+        list.append(get_left_stack(right, []), rest),
+        case filter_fn(value) {
+          Ok(val) -> insert_node_at(acc, get_size(acc), val)
+          //add(acc, value)
+          _ -> acc
         },
         filter_fn,
       )

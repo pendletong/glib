@@ -506,3 +506,21 @@ pub fn rest_test() {
   treelist.rest(treelist.new())
   |> should.equal(Error(Nil))
 }
+
+pub fn filter_map_test() {
+  let assert Ok(l) = treelist.from_list([2, 4, 6, 1])
+  l
+  |> treelist.filter_map(fn(x) { Ok(x + 1) })
+  |> treelist.to_list
+  |> should.equal([3, 5, 7, 2])
+
+  l
+  |> treelist.filter_map(Error)
+  |> treelist.to_list
+  |> should.equal([])
+
+  // TCO test
+  treelist.repeat(0, recursion_test_cycles)
+  |> should.be_ok
+  |> treelist.filter_map(fn(x) { Ok(x + 1) })
+}
