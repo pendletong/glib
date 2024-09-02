@@ -378,6 +378,14 @@ pub fn first(tlist: TreeList(value)) -> Result(value, Nil) {
   }
 }
 
+pub fn rest(tlist: TreeList(value)) -> Result(TreeList(value), Nil) {
+  case size(tlist) {
+    0 -> Error(Nil)
+    1 -> Ok(new())
+    _ -> Ok(TreeList(remove_node_at(tlist.root, 0).0))
+  }
+}
+
 pub fn last(tlist: TreeList(value)) -> Result(value, Nil) {
   case size(tlist) {
     0 -> Error(Nil)

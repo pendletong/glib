@@ -480,3 +480,20 @@ pub fn contains_test() {
   l
   |> treelist.contains(1)
 }
+
+pub fn rest_test() {
+  let assert Ok(l) = treelist.from_list([0, 4, 5, 7])
+  treelist.rest(l)
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([4, 5, 7])
+
+  let assert Ok(l) = treelist.from_list([0])
+  treelist.rest(l)
+  |> should.be_ok
+  |> treelist.to_list
+  |> should.equal([])
+
+  treelist.rest(treelist.new())
+  |> should.equal(Error(Nil))
+}
