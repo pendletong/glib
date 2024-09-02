@@ -605,6 +605,38 @@ pub fn drop(tlist: TreeList(value), up_to_n: Int) -> TreeList(value) {
   }
 }
 
+/// Returns a treelist containing the first given number of elements from the given
+/// treelist.
+///
+/// If the treelist has less than the number of elements then the full treelist is
+/// returned.
+///
+///
+/// ## Examples
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// take(list, 2)
+/// |> to_list
+/// // -> [1, 2]
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// take(list, 9)
+/// |> to_list
+/// // -> [1, 2, 3, 4]
+/// ```
+///
+pub fn take(tlist: TreeList(value), up_to_n: Int) -> TreeList(value) {
+  case int.compare(size(tlist), up_to_n) {
+    Eq | Lt -> tlist
+    Gt -> {
+      TreeList(do_take(get_left_stack(tlist.root, []), BlankNode, up_to_n - 1))
+    }
+  }
+}
+
 // Internal functions
 
 fn get_size(node: Node(value)) -> Int {
@@ -1125,5 +1157,27 @@ fn do_try_map(
       }
     }
     _ -> Ok(acc)
+  }
+}
+
+fn do_take(
+  node_stack: List(Node(value)),
+  acc: Node(value),
+  index: Int,
+) -> Node(value) {
+  case index >= 0 {
+    True -> {
+      case node_stack {
+        [Node(value:, right:, ..), ..rest] -> {
+          do_take(
+            list.append(get_left_stack(right, []), rest),
+            insert_node_at(acc, get_size(acc), value),
+            index - 1,
+          )
+        }
+        _ -> acc
+      }
+    }
+    False -> acc
   }
 }

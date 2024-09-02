@@ -587,3 +587,29 @@ pub fn drop_test() {
   list
   |> treelist.drop(recursion_test_cycles)
 }
+
+pub fn take_test() {
+  treelist.new()
+  |> treelist.take(5)
+  |> treelist.to_list
+  |> should.equal([])
+
+  let assert Ok(list) = treelist.from_list([1, 2, 3, 4, 5, 6, 7, 8])
+
+  list
+  |> treelist.take(5)
+  |> treelist.to_list
+  |> should.equal([1, 2, 3, 4, 5])
+
+  let assert Ok(list) = treelist.from_list([1, 2, 3, 4, 5])
+
+  list
+  |> treelist.take(5)
+  |> treelist.to_list
+  |> should.equal([1, 2, 3, 4, 5])
+
+  // TCO test
+  let assert Ok(list) = treelist.repeat(0, recursion_test_cycles)
+  list
+  |> treelist.take(recursion_test_cycles)
+}
