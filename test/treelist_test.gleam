@@ -1,4 +1,5 @@
 import gleam/int
+import gleam/io
 import gleam/iterator
 import gleam/list
 import gleam/result
@@ -89,8 +90,8 @@ pub fn insert_test() {
   |> treelist.insert(3, "Three")
   |> should.be_error
 
-  iterator.from_list(["One", "Two", "Three", "Four", "Five"])
-  |> iterator.fold(treelist.new(), fn(l, val) {
+  ["One", "Two", "Three", "Four", "Five"]
+  |> list.fold(treelist.new(), fn(l, val) {
     treelist.insert(l, 0, val)
     |> should.be_ok
   })
@@ -99,8 +100,8 @@ pub fn insert_test() {
 }
 
 pub fn to_list_test() {
-  iterator.from_list(["One", "Two", "Three", "Four", "Five"])
-  |> iterator.fold(treelist.new(), fn(l, val) {
+  ["One", "Two", "Three", "Four", "Five"]
+  |> list.fold(treelist.new(), fn(l, val) {
     treelist.insert(l, treelist.size(l), val)
     |> should.be_ok
   })
@@ -109,16 +110,18 @@ pub fn to_list_test() {
 }
 
 pub fn large_list_test() {
-  let list =
-    iterator.range(0, 499)
-    |> iterator.fold(treelist.new(), fn(l, val) {
+  let l = list.range(0, 499)
+  let tl =
+    l
+    |> list.fold(treelist.new(), fn(l, val) {
       treelist.insert(l, treelist.size(l), val)
       |> should.be_ok
     })
-  list
+  tl
   |> treelist.size()
   |> should.equal(500)
-  list |> treelist.get(200) |> should.be_ok |> should.equal(200)
+  tl |> treelist.get(200) |> should.be_ok |> should.equal(200)
+  tl |> treelist.to_list |> should.equal(l)
 }
 
 pub fn from_list_test() {
@@ -323,7 +326,6 @@ pub fn last_index_of_test() {
   l
   |> treelist.last_index_of(49)
   |> should.equal(49)
-
   l
   |> treelist.last_index_of(0)
   |> should.equal(0)
@@ -391,4 +393,16 @@ pub fn filter_test() {
       True -> i / 2
     })
   })
+
+  treelist.filter(l, fn(el) { el >= 90 })
+  |> treelist.size
+  |> should.equal(10)
+
+  treelist.filter(l, fn(el) { el >= 100 })
+  |> treelist.size
+  |> should.equal(0)
+
+  treelist.filter(l, fn(el) { el >= 0 })
+  |> treelist.size
+  |> should.equal(100)
 }

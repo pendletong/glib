@@ -276,10 +276,8 @@ pub fn to_iterator_reverse(tlist: TreeList(value)) -> Iterator(value) {
 /// ```
 ///
 pub fn index_of(tlist: TreeList(value), item: value) -> Int {
-  do_index_of(
-    node_iterator(tlist.root, fn(_, value, index) { #(value, index) }),
-    item,
-  )
+  let stack = init_forward_stack(tlist.root, 0, [])
+  do_index_of(stack, 0, item)
 }
 
 /// Returns the index of the last occurrence of the specified element
@@ -301,17 +299,8 @@ pub fn index_of(tlist: TreeList(value), item: value) -> Int {
 /// ```
 ///
 pub fn last_index_of(tlist: TreeList(value), item: value) -> Int {
-  case
-    do_index_of(
-      node_iterator_reverse(tlist.root, fn(_, value, index) { #(value, index) }),
-      item,
-    )
-  {
-    -1 -> -1
-    n -> {
-      get_size(tlist.root) - n - 1
-    }
-  }
+  let stack = init_backward_stack(tlist.root, 0, [])
+  do_last_index_of(stack, size(tlist) - 1, item)
 }
 
 /// Returns true if this list contains the specified element.
@@ -334,13 +323,8 @@ pub fn filter(
   tlist: TreeList(value),
   filter_fn: fn(value) -> Bool,
 ) -> TreeList(value) {
-  to_iterator(tlist)
-  |> iterator.fold(new(), fn(acc, el) {
-    case filter_fn(el) {
-      True -> TreeList(insert_node_at(acc.root, get_size(acc.root), el))
-      False -> acc
-    }
-  })
+  let stack = init_forward_stack(tlist.root, 0, [])
+  TreeList(do_filter(stack, BlankNode, filter_fn))
 }
 
 // Internal functions
@@ -736,18 +720,6 @@ fn get_right_stack(
   }
 }
 
-fn do_index_of(it: Iterator(#(value, Int)), item: value) -> Int {
-  case
-    iterator.find(it, fn(el: #(value, Int)) -> Bool {
-      let #(node_val, _index) = el
-      node_val == item
-    })
-  {
-    Error(Nil) -> -1
-    Ok(#(_, index)) -> index
-  }
-}
-
 fn set_node_at(node: Node(value), index: Int, new_value: value) -> Node(value) {
   case node {
     Node(value:, height:, size:, left:, right:) -> {
@@ -775,5 +747,68 @@ fn set_node_at(node: Node(value), index: Int, new_value: value) -> Node(value) {
       }
     }
     _ -> BlankNode
+  }
+}
+
+fn do_index_of(
+  node_stack: List(Node(value)),
+  index: Int,
+  search_value: value,
+) -> Int {
+  case node_stack {
+    [Node(value:, right:, ..), ..rest] -> {
+      case value == search_value {
+        True -> index
+        False ->
+          do_index_of(
+            list.append(get_left_stack(right, []), rest),
+            index + 1,
+            search_value,
+          )
+      }
+    }
+    _ -> -1
+  }
+}
+
+fn do_last_index_of(
+  node_stack: List(Node(value)),
+  index: Int,
+  search_value: value,
+) -> Int {
+  case node_stack {
+    [Node(value:, left:, ..), ..rest] -> {
+      case value == search_value {
+        True -> index
+        False ->
+          do_last_index_of(
+            list.append(get_right_stack(left, []), rest),
+            index - 1,
+            search_value,
+          )
+      }
+    }
+    _ -> -1
+  }
+}
+
+fn do_filter(
+  node_stack: List(Node(value)),
+  acc: Node(value),
+  filter_fn: fn(value) -> Bool,
+) -> Node(value) {
+  case node_stack {
+    [Node(value:, right:, ..), ..rest] -> {
+      do_filter(
+        list.append(get_left_stack(right, []), rest),
+        case filter_fn(value) {
+          True -> insert_node_at(acc, get_size(acc), value)
+          //add(acc, value)
+          False -> acc
+        },
+        filter_fn,
+      )
+    }
+    _ -> acc
   }
 }
