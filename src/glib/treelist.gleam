@@ -567,6 +567,44 @@ pub fn try_map(
   }
 }
 
+/// Returns a treelist that is the given treelist with up to the given number of
+/// elements removed from the front of the treelist.
+///
+/// If the treelist has less than the number of elements an empty treelist is
+/// returned.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// drop(list, 2)
+/// |> to_list
+/// // -> [3, 4]
+/// ```
+///
+/// ```gleam
+/// let assert Ok(list) = from_list([1, 2, 3, 4])
+/// drop(list, 9)
+/// |> to_list
+/// // -> []
+/// ```
+///
+pub fn drop(tlist: TreeList(value), up_to_n: Int) -> TreeList(value) {
+  case int.compare(size(tlist), up_to_n) {
+    Eq | Lt -> new()
+    Gt -> {
+      TreeList(
+        iterator.repeat(0)
+        |> iterator.take(up_to_n)
+        |> iterator.fold(tlist.root, fn(acc, n) {
+          let #(new_list, _) = remove_node_at(acc, n)
+          new_list
+        }),
+      )
+    }
+  }
+}
+
 // Internal functions
 
 fn get_size(node: Node(value)) -> Int {

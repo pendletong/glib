@@ -568,3 +568,22 @@ pub fn try_map_test() {
   |> should.be_ok
   |> treelist.try_map(fun)
 }
+
+pub fn drop_test() {
+  treelist.new()
+  |> treelist.drop(5)
+  |> treelist.to_list
+  |> should.equal([])
+
+  let assert Ok(list) = treelist.from_list([1, 2, 3, 4, 5, 6, 7, 8])
+  list
+  |> treelist.drop(5)
+  |> treelist.to_list
+  |> should.equal([6, 7, 8])
+
+  // TCO test
+  let assert Ok(list) = treelist.repeat(0, recursion_test_cycles)
+
+  list
+  |> treelist.drop(recursion_test_cycles)
+}
