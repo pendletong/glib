@@ -5,7 +5,7 @@ import gleam/iterator
 import gleam/list
 import gleam/result
 import glib/map
-import glib/treelist
+import glib/treelist.{type TreeList}
 import glychee/benchmark
 import glychee/configuration
 
@@ -19,7 +19,55 @@ pub fn main() {
   list_benchmark()
   list_iterator_benchmark()
   list_remove_benchmark()
+  list_reverse_benchmark()
   to_list_benchmark()
+}
+
+@target(erlang)
+fn list_reverse_benchmark() {
+  let l100 = list.range(0, 99)
+  let l1000 = list.range(0, 999)
+  let l10000 = list.range(0, 9999)
+  let l100000 = list.range(0, 99_999)
+
+  benchmark.run(
+    [
+      benchmark.Function(label: "treelist reverse", callable: fn(test_data) {
+        fn() {
+          let #(l, _) = test_data
+          treelist.reverse(l)
+          Nil
+        }
+      }),
+      benchmark.Function(label: "list remove", callable: fn(test_data) {
+        fn() {
+          let #(_, l) = test_data
+          list.reverse(l)
+          Nil
+        }
+      }),
+    ],
+    [
+      benchmark.Data(label: "100 items", data: {
+        #(result.lazy_unwrap(treelist.from_list(l100), fn() { panic }), l100)
+      }),
+      benchmark.Data(label: "1000 items", data: {
+        #(result.lazy_unwrap(treelist.from_list(l1000), fn() { panic }), l1000)
+      }),
+      benchmark.Data(label: "10000 items", data: {
+        #(
+          result.lazy_unwrap(treelist.from_list(l10000), fn() { panic }),
+          l10000,
+        )
+      }),
+      benchmark.Data(label: "100000 items", data: {
+        #(
+          result.lazy_unwrap(treelist.from_list(l100000), fn() { panic }),
+          l100000,
+        )
+      }),
+    ],
+  )
 }
 
 @target(erlang)
@@ -126,25 +174,45 @@ fn list_remove_benchmark() {
 
 @target(erlang)
 fn list_iterator_benchmark() {
+  let l100 = list.range(0, 99)
+  let l10000 = list.range(0, 9999)
   benchmark.run(
     [
-      benchmark.Function(label: "iterator", callable: fn(test_data) {
-        fn() {
-          treelist.to_iterator(test_data)
-          |> iterator.to_list
-        }
-      }),
+      benchmark.Function(
+        label: "treelist iterator",
+        callable: fn(test_data: #(TreeList(Int), List(Int))) {
+          fn() {
+            treelist.to_iterator(test_data.0)
+            |> iterator.to_list
+          }
+        },
+      ),
+      benchmark.Function(
+        label: "iterator",
+        callable: fn(test_data: #(TreeList(Int), List(Int))) {
+          fn() {
+            iterator.from_list(test_data.1)
+            |> iterator.to_list
+          }
+        },
+      ),
     ],
     [
       benchmark.Data(label: "100 items", data: {
-        list.range(0, 99)
-        |> treelist.from_list
-        |> result.unwrap(treelist.new())
+        #(
+          l100
+            |> treelist.from_list
+            |> result.unwrap(treelist.new()),
+          l100,
+        )
       }),
       benchmark.Data(label: "10000 items", data: {
-        list.range(0, 9999)
-        |> treelist.from_list
-        |> result.unwrap(treelist.new())
+        #(
+          l10000
+            |> treelist.from_list
+            |> result.unwrap(treelist.new()),
+          l10000,
+        )
       }),
     ],
   )
