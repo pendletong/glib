@@ -1,7 +1,6 @@
 import gleam/bool
 import gleam/float
 import gleam/int
-import gleam/io
 import gleam/iterator
 import gleam/list.{Continue, Stop}
 import gleam/order.{Gt, Lt}
@@ -9,6 +8,13 @@ import gleam/result
 
 pub type Fraction {
   Fraction(numerator: Int, denominator: Int)
+}
+
+pub type FractionError {
+  ZeroDenominator
+  Overflow
+  TooLarge
+  ConversionError
 }
 
 pub fn new(numerator: Int, denominator: Int) -> Fraction {
@@ -21,7 +27,7 @@ const min_int_value = -2_147_483_648
 
 const max_float_value = 1.7976931348623157e308
 
-pub fn from_float(num: Float) -> Result(Fraction, Nil) {
+pub fn from_float(num: Float) -> Result(Fraction, FractionError) {
   let sign = case float.compare(num, 0.0) {
     Lt -> -1
     _ -> 1
@@ -31,7 +37,7 @@ pub fn from_float(num: Float) -> Result(Fraction, Nil) {
 
   use <- bool.guard(
     when: num >. int.to_float(max_int_value),
-    return: Error(Nil),
+    return: Error(TooLarge),
   )
 
   let whole = float.truncate(num)
@@ -56,7 +62,7 @@ fn construct_fraction(
   sign: Int,
   whole: Int,
   value: Float,
-) -> Result(Fraction, Nil) {
+) -> Result(Fraction, FractionError) {
   let a =
     InternalFraction(
       v0: Fraction(0, 1),
@@ -89,7 +95,7 @@ fn construct_fraction(
     })
 
   case fr {
-    InternalFraction(v0: Fraction(-1, -1), ..) -> Error(Nil)
+    InternalFraction(v0: Fraction(-1, -1), ..) -> Error(ConversionError)
     _ ->
       reduced_fraction(Fraction(
         sign * { fr.v0.numerator + whole * fr.v0.denominator },
@@ -98,8 +104,8 @@ fn construct_fraction(
   }
 }
 
-pub fn reduced_fraction(fr: Fraction) -> Result(Fraction, Nil) {
-  use <- bool.guard(when: fr.denominator == 0, return: Error(Nil))
+pub fn reduced_fraction(fr: Fraction) -> Result(Fraction, FractionError) {
+  use <- bool.guard(when: fr.denominator == 0, return: Error(ZeroDenominator))
   use <- bool.guard(when: fr.numerator == 0, return: Ok(Fraction(0, 1)))
 
   let fr = case fr.denominator == min_int_value, int.is_even(fr.numerator) {
@@ -111,7 +117,7 @@ pub fn reduced_fraction(fr: Fraction) -> Result(Fraction, Nil) {
     True -> {
       case fr.numerator == min_int_value, fr.denominator == min_int_value {
         False, False -> Ok(Fraction(-fr.numerator, -fr.denominator))
-        _, _ -> Error(Nil)
+        _, _ -> Error(Overflow)
       }
     }
     False -> Ok(fr)
@@ -121,11 +127,11 @@ pub fn reduced_fraction(fr: Fraction) -> Result(Fraction, Nil) {
   Ok(Fraction(fr.numerator / gcd, fr.denominator / gcd))
 }
 
-pub fn gcd(u: Int, v: Int) -> Result(Int, Nil) {
+pub fn gcd(u: Int, v: Int) -> Result(Int, FractionError) {
   case u == 0 || v == 0 {
     True -> {
       case u == min_int_value || v == min_int_value {
-        True -> Error(Nil)
+        True -> Error(Overflow)
         False -> Ok(int.absolute_value(u) + int.absolute_value(v))
       }
     }
@@ -156,7 +162,7 @@ pub fn gcd(u: Int, v: Int) -> Result(Int, Nil) {
                 }
               }
             })
-          use <- bool.guard(when: k == -1, return: Error(Nil))
+          use <- bool.guard(when: k == -1, return: Error(Overflow))
 
           let t = case int.is_odd(u) {
             True -> v
