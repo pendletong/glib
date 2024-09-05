@@ -4,7 +4,7 @@ import gleam/int
 import gleam/io
 import gleam/iterator
 import gleam/list.{Continue, Stop}
-import gleam/order.{Lt}
+import gleam/order.{Gt, Lt}
 import gleam/result
 
 pub type Fraction {
@@ -37,7 +37,7 @@ pub fn from_float(num: Float) -> Result(Fraction, Nil) {
   let whole = float.truncate(num)
   let num = num -. int.to_float(whole)
 
-  construct_fraction(sign, whole, num) |> io.debug
+  construct_fraction(sign, whole, num)
 }
 
 type InternalFraction {
@@ -117,13 +117,80 @@ pub fn reduced_fraction(fr: Fraction) -> Result(Fraction, Nil) {
     False -> Ok(fr)
   })
 
-  let gcd = gcd(fr.numerator, fr.denominator)
-
+  use gcd <- result.try(gcd(fr.numerator, fr.denominator))
   Ok(Fraction(fr.numerator / gcd, fr.denominator / gcd))
 }
 
-fn gcd(v1: Int, v2: Int) -> Int {
-  1
+pub fn gcd(u: Int, v: Int) -> Result(Int, Nil) {
+  case u == 0 || v == 0 {
+    True -> {
+      case u == min_int_value || v == min_int_value {
+        True -> Error(Nil)
+        False -> Ok(int.absolute_value(u) + int.absolute_value(v))
+      }
+    }
+    False -> {
+      case int.absolute_value(u) == 1 || int.absolute_value(v) == 1 {
+        True -> Ok(1)
+        False -> {
+          let u = case u > 0 {
+            True -> -u
+            False -> u
+          }
+          let v = case v > 0 {
+            True -> -v
+            False -> v
+          }
+
+          let #(u, v, k) =
+            list.range(0, 31)
+            |> list.fold_until(#(u, v, 0), fn(vals, k) {
+              let #(u, v, _) = vals
+              case k == 31 {
+                True -> Stop(#(-1, -1, -1))
+                False -> {
+                  case int.is_odd(u) || int.is_odd(v) {
+                    False -> Continue(#(vals.0 / 2, vals.1 / 2, k))
+                    True -> Stop(#(u, v, k))
+                  }
+                }
+              }
+            })
+          use <- bool.guard(when: k == -1, return: Error(Nil))
+
+          let t = case int.is_odd(u) {
+            True -> v
+            False -> -u / 2
+          }
+          let u = reduce_t(t, #(u, v))
+          Ok(-u * int.bitwise_shift_left(1, k))
+        }
+      }
+    }
+  }
+}
+
+fn reduce_t(t: Int, uv: #(Int, Int)) -> Int {
+  let #(u, v) = uv
+  let t = divide_while_even(t)
+  let #(u, v) = case int.compare(t, 0) {
+    Gt -> #(-t, v)
+    _ -> #(u, t)
+  }
+
+  let t = { v - u } / 2
+
+  case t == 0 {
+    True -> u
+    False -> reduce_t(t, #(u, v))
+  }
+}
+
+fn divide_while_even(t: Int) -> Int {
+  case int.is_even(t) {
+    True -> divide_while_even(t / 2)
+    False -> t
+  }
 }
 
 fn internal_calc(value: Float, fr: InternalFraction) -> InternalFraction {
