@@ -11,10 +11,10 @@ pub type Fraction {
 }
 
 pub type FractionError {
-  ZeroDenominator
-  Overflow
-  TooLarge
-  ConversionError
+  ZeroDenominator(a: String)
+  Overflow(a: String)
+  TooLarge(a: String)
+  ConversionError(a: String)
 }
 
 pub fn new(numerator: Int, denominator: Int) -> Fraction {
@@ -37,7 +37,7 @@ pub fn from_float(num: Float) -> Result(Fraction, FractionError) {
 
   use <- bool.guard(
     when: num >. int.to_float(max_int_value),
-    return: Error(TooLarge),
+    return: Error(TooLarge("> 2_147_483_647")),
   )
 
   let whole = float.truncate(num)
@@ -95,7 +95,8 @@ fn construct_fraction(
     })
 
   case fr {
-    InternalFraction(v0: Fraction(-1, -1), ..) -> Error(ConversionError)
+    InternalFraction(v0: Fraction(-1, -1), ..) ->
+      Error(ConversionError("Too many iterations"))
     _ ->
       reduced_fraction(Fraction(
         sign * { fr.v0.numerator + whole * fr.v0.denominator },
@@ -105,7 +106,10 @@ fn construct_fraction(
 }
 
 pub fn reduced_fraction(fr: Fraction) -> Result(Fraction, FractionError) {
-  use <- bool.guard(when: fr.denominator == 0, return: Error(ZeroDenominator))
+  use <- bool.guard(
+    when: fr.denominator == 0,
+    return: Error(ZeroDenominator("Denominator is zero")),
+  )
   use <- bool.guard(when: fr.numerator == 0, return: Ok(Fraction(0, 1)))
 
   let fr = case fr.denominator == min_int_value, int.is_even(fr.numerator) {
@@ -117,7 +121,7 @@ pub fn reduced_fraction(fr: Fraction) -> Result(Fraction, FractionError) {
     True -> {
       case fr.numerator == min_int_value, fr.denominator == min_int_value {
         False, False -> Ok(Fraction(-fr.numerator, -fr.denominator))
-        _, _ -> Error(Overflow)
+        _, _ -> Error(Overflow("Denominator or Numerator is -2_147_483_648"))
       }
     }
     False -> Ok(fr)
@@ -131,7 +135,7 @@ pub fn gcd(u: Int, v: Int) -> Result(Int, FractionError) {
   case u == 0 || v == 0 {
     True -> {
       case u == min_int_value || v == min_int_value {
-        True -> Error(Overflow)
+        True -> Error(Overflow("gcd"))
         False -> Ok(int.absolute_value(u) + int.absolute_value(v))
       }
     }
@@ -162,7 +166,10 @@ pub fn gcd(u: Int, v: Int) -> Result(Int, FractionError) {
                 }
               }
             })
-          use <- bool.guard(when: k == -1, return: Error(Overflow))
+          use <- bool.guard(
+            when: k == -1,
+            return: Error(Overflow("gcd iteration")),
+          )
 
           let t = case int.is_odd(u) {
             True -> v
