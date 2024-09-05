@@ -46,6 +46,63 @@ pub fn from_float(num: Float) -> Result(Fraction, FractionError) {
   construct_fraction(sign, whole, num)
 }
 
+pub fn fraction(
+  numerator: Int,
+  denominator: Int,
+) -> Result(Fraction, FractionError) {
+  use <- bool.guard(
+    when: denominator == 0,
+    return: Error(ZeroDenominator("Denominator is zero")),
+  )
+  case denominator < 0 {
+    True -> {
+      use <- bool.guard(
+        when: numerator == min_int_value || denominator == min_int_value,
+        return: Error(Overflow("Denominator or Numerator is -2_147_483_648")),
+      )
+      Ok(Fraction(-numerator, -denominator))
+    }
+    False -> {
+      Ok(Fraction(numerator, denominator))
+    }
+  }
+}
+
+pub fn fraction_and_whole(
+  whole: Int,
+  numerator: Int,
+  denominator: Int,
+) -> Result(Fraction, FractionError) {
+  use <- bool.guard(
+    when: denominator == 0,
+    return: Error(ZeroDenominator("Denominator is zero")),
+  )
+  use <- bool.guard(
+    when: denominator < 0,
+    return: Error(ZeroDenominator("Denominator is less than zero")),
+  )
+  use <- bool.guard(
+    when: numerator < 0,
+    return: Error(ZeroDenominator("Numerator is less than zero")),
+  )
+
+  let numerator = case whole < 0 {
+    True -> {
+      whole * denominator - numerator
+    }
+    False -> {
+      whole * denominator + numerator
+    }
+  }
+
+  use <- bool.guard(
+    when: numerator < min_int_value || numerator > max_int_value,
+    return: Error(Overflow("Numerator overflows")),
+  )
+
+  Ok(Fraction(numerator, denominator))
+}
+
 type InternalFraction {
   InternalFraction(
     v0: Fraction,
