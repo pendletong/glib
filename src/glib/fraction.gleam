@@ -166,7 +166,112 @@ pub fn abs(fr: Fraction) -> Result(Fraction, FractionError) {
   }
 }
 
+pub fn add(fr1: Fraction, fr2: Fraction) -> Result(Fraction, FractionError) {
+  add_or_sub(fr1, fr2, True)
+}
+
+pub fn sub(fr1: Fraction, fr2: Fraction) -> Result(Fraction, FractionError) {
+  add_or_sub(fr1, fr2, False)
+}
+
 // Internal functions
+
+fn add_or_sub(
+  fr1: Fraction,
+  fr2: Fraction,
+  add: Bool,
+) -> Result(Fraction, FractionError) {
+  use <- bool.guard(when: fr1.numerator == 0, return: case add {
+    True -> Ok(fr2)
+    False -> negate(fr2)
+  })
+  use <- bool.guard(when: fr2.numerator == 0, return: Ok(fr1))
+
+  use gcd1 <- result.try(gcd(fr1.denominator, fr2.denominator))
+  use <- bool.guard(when: gcd1 == 1, return: {
+    use uvp <- result.try(mul_check(fr1.numerator, fr2.denominator))
+    use upv <- result.try(mul_check(fr2.numerator, fr1.denominator))
+    use new_numerator <- result.try(case add {
+      True -> add_check(uvp, upv)
+      False -> sub_check(uvp, upv)
+    })
+    use new_denominator <- result.try(mul_pos(fr1.denominator, fr2.denominator))
+    Ok(Fraction(new_numerator, new_denominator))
+  })
+
+  let uvp = fr1.numerator * { fr2.denominator / gcd1 }
+  let upv = fr2.numerator * { fr1.denominator / gcd1 }
+  let t = case add {
+    True -> uvp + upv
+    False -> uvp - upv
+  }
+
+  use tmod <- result.try(
+    int.modulo(t, gcd1) |> result.replace_error(ZeroDenominator("")),
+  )
+
+  use gcd2 <- result.try(case tmod == 0 {
+    True -> Ok(gcd1)
+    False -> gcd(tmod, gcd1)
+  })
+
+  let w = t / gcd2
+
+  case w > max_int_value || w < min_int_value {
+    True -> Error(Overflow(int.to_string(w) <> " overflows"))
+    False -> {
+      use new_denominator <- result.try(mul_pos(
+        fr1.denominator / gcd1,
+        fr2.denominator / gcd2,
+      ))
+      Ok(Fraction(w, new_denominator))
+    }
+  }
+}
+
+fn mul_check(x: Int, y: Int) -> Result(Int, FractionError) {
+  let m = x * y
+  case m < min_int_value || m > max_int_value {
+    True ->
+      Error(Overflow(
+        "multiplying " <> int.to_string(x) <> " and " <> int.to_string(y),
+      ))
+    False -> Ok(m)
+  }
+}
+
+fn add_check(x: Int, y: Int) -> Result(Int, FractionError) {
+  let a = x + y
+  case a < min_int_value || a > max_int_value {
+    True ->
+      Error(Overflow(
+        "adding " <> int.to_string(x) <> " and " <> int.to_string(y),
+      ))
+    False -> Ok(a)
+  }
+}
+
+fn sub_check(x: Int, y: Int) -> Result(Int, FractionError) {
+  let s = x - y
+  case s < min_int_value || s > max_int_value {
+    True ->
+      Error(Overflow(
+        "subtracting " <> int.to_string(y) <> " from " <> int.to_string(x),
+      ))
+    False -> Ok(s)
+  }
+}
+
+fn mul_pos(x: Int, y: Int) -> Result(Int, FractionError) {
+  let m = x * y
+  case m > max_int_value {
+    True ->
+      Error(Overflow(
+        "multiplying " <> int.to_string(x) <> " and " <> int.to_string(y),
+      ))
+    False -> Ok(m)
+  }
+}
 
 fn parse_with_whole(
   whole: String,
