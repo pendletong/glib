@@ -3,7 +3,7 @@ import gleam/float
 import gleam/int
 import gleam/iterator
 import gleam/list.{Continue, Stop}
-import gleam/order.{Gt, Lt}
+import gleam/order.{type Order, Eq, Gt, Lt}
 import gleam/result
 import gleam/string
 
@@ -172,6 +172,11 @@ pub fn add(fr1: Fraction, fr2: Fraction) -> Result(Fraction, FractionError) {
 
 pub fn sub(fr1: Fraction, fr2: Fraction) -> Result(Fraction, FractionError) {
   add_or_sub(fr1, fr2, False)
+}
+
+pub fn compare(fr1: Fraction, fr2: Fraction) -> Order {
+  use <- bool.guard(when: fr1 == fr2, return: Eq)
+  int.compare(fr1.numerator * fr2.denominator, fr1.denominator * fr2.numerator)
 }
 
 // Internal functions

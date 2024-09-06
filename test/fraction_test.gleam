@@ -1,6 +1,7 @@
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/order.{Eq, Gt, Lt}
 import gleeunit/should
 import glib/fraction.{Fraction}
 
@@ -658,4 +659,57 @@ pub fn sub_test() {
     |> should.be_ok
   fraction.sub(f1, f2)
   |> should.be_error
+}
+
+pub fn compare_test() {
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  fraction.compare(f1, f1)
+  |> should.equal(Eq)
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(2, 5)
+    |> should.be_ok
+  fraction.compare(f1, f2)
+  |> should.equal(Gt)
+  fraction.compare(f2, f2)
+  |> should.equal(Eq)
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(4, 5)
+    |> should.be_ok
+  fraction.compare(f1, f2) |> should.equal(Lt)
+  fraction.compare(f2, f2) |> should.equal(Eq)
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  fraction.compare(f1, f2) |> should.equal(Eq)
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(6, 10)
+    |> should.be_ok
+  fraction.compare(f1, f2) |> should.equal(Eq)
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new2(-1, 1, 2_147_483_647)
+    |> should.be_ok
+  fraction.compare(f1, f2) |> should.equal(Gt)
+  fraction.compare(f2, f2) |> should.equal(Eq)
 }
