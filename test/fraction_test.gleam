@@ -332,3 +332,330 @@ pub fn negate_test() {
   |> fraction.negate
   |> should.be_error
 }
+
+pub fn add_test() {
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 5)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(4, 5))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(2, 5)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 1))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+
+  fraction.add(f1, f1)
+  |> should.be_ok
+  |> should.equal(Fraction(6, 5))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(-4, 5)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(-1, 5))
+
+  let f1 =
+    fraction.new(2_147_483_647 - 1, 1)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(2_147_483_647, 1))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 2)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(11, 10))
+
+  let f1 =
+    fraction.new(3, 8)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 6)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(13, 24))
+
+  let f1 =
+    fraction.new(0, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 5)
+    |> should.be_ok
+  let f3 =
+    fraction.add(f1, f2)
+    |> should.be_ok
+  let f4 =
+    fraction.add(f1, f2)
+    |> should.be_ok
+  f3
+  |> should.equal(f4)
+
+  let f1 =
+    fraction.new(-1, 13 * 13 * 2 * 2)
+    |> should.be_ok
+  let f2 =
+    fraction.new(-2, 13 * 17 * 2)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(-17 - 2 * 13 * 2, 13 * 13 * 17 * 2 * 2))
+
+  let f1 =
+    fraction.new(1, 32_768 * 3)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 59_049)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(52_451, 1_934_917_632))
+
+  let f1 =
+    fraction.new(-2_147_483_648, 3)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 3)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(-2_147_483_647, 3))
+
+  let f1 =
+    fraction.new(2_147_483_647 - 1, 1)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(2_147_483_647, 1))
+
+  let f1 =
+    fraction.new(2_147_483_647, 1)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(-2_147_483_648, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(-1, 5)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(2_147_483_647, 1)
+    |> should.be_ok
+
+  fraction.add(f1, f1)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(-2_147_483_647, 1)
+    |> should.be_ok
+
+  fraction.add(f1, f1)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(3, 327_680)
+    |> should.be_ok
+  let f2 =
+    fraction.new(2, 59_049)
+    |> should.be_ok
+  fraction.add(f1, f2)
+  |> should.be_error
+}
+
+pub fn sub_test() {
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 5)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(2, 5))
+
+  let f1 =
+    fraction.new(7, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(2, 5)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 1))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(0, 1))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(-4, 5)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(7, 5))
+
+  let f1 =
+    fraction.new(0, 1)
+    |> should.be_ok
+  let f2 =
+    fraction.new(4, 5)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(-4, 5))
+
+  let f1 =
+    fraction.new(0, 1)
+    |> should.be_ok
+  let f2 =
+    fraction.new(-4, 5)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(4, 5))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 2)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 10))
+
+  let f1 =
+    fraction.new(1, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(0, 1)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_ok
+  |> should.equal(f1)
+
+  let f1 =
+    fraction.new(1, 32_768 * 3)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 59_049)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(-13_085, 1_934_917_632))
+
+  let f1 =
+    fraction.new(-2_147_483_648, 3)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 3)
+    |> should.be_ok
+    |> fraction.negate
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(-2_147_483_648 + 1, 3))
+
+  let f1 =
+    fraction.new(2_147_483_647, 1)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(2_147_483_647 - 1, 1))
+
+  let f1 =
+    fraction.new(1, 2_147_483_647)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 2_147_483_647 - 1)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(-2_147_483_648, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 5)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(-2_147_483_648, 1)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(2_147_483_647, 1)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 1)
+    |> should.be_ok
+    |> fraction.negate
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(3, 327_680)
+    |> should.be_ok
+  let f2 =
+    fraction.new(2, 59_049)
+    |> should.be_ok
+  fraction.sub(f1, f2)
+  |> should.be_error
+}
