@@ -5,6 +5,7 @@ import gleam/iterator
 import gleam/list.{Continue, Stop}
 import gleam/order.{Gt, Lt}
 import gleam/result
+import gleam/string
 
 pub type Fraction {
   Fraction(numerator: Int, denominator: Int)
@@ -15,10 +16,6 @@ pub type FractionError {
   Overflow(a: String)
   TooLarge(a: String)
   ConversionError(a: String)
-}
-
-pub fn new(numerator: Int, denominator: Int) -> Fraction {
-  Fraction(numerator, denominator)
 }
 
 const max_int_value = 2_147_483_647
@@ -46,10 +43,7 @@ pub fn from_float(num: Float) -> Result(Fraction, FractionError) {
   construct_fraction(sign, whole, num)
 }
 
-pub fn fraction(
-  numerator: Int,
-  denominator: Int,
-) -> Result(Fraction, FractionError) {
+pub fn new(numerator: Int, denominator: Int) -> Result(Fraction, FractionError) {
   use <- bool.guard(
     when: denominator == 0,
     return: Error(ZeroDenominator("Denominator is zero")),
@@ -68,7 +62,7 @@ pub fn fraction(
   }
 }
 
-pub fn fraction_and_whole(
+pub fn new2(
   whole: Int,
   numerator: Int,
   denominator: Int,
@@ -101,6 +95,72 @@ pub fn fraction_and_whole(
   )
 
   Ok(Fraction(numerator, denominator))
+}
+
+pub fn from_string(fraction: String) -> Result(Fraction, FractionError) {
+  case string.contains(fraction, ".") {
+    True -> {
+      case float.parse(fraction) {
+        Ok(f) -> from_float(f)
+        Error(_) -> Error(ConversionError(fraction))
+      }
+    }
+    False -> {
+      let parts = string.split(fraction, " ")
+      case parts {
+        [] -> Ok(Fraction(0, 1))
+        [whole, fraction] -> {
+          parse_with_whole(whole, fraction)
+        }
+        [fraction] -> {
+          case int.parse(fraction) {
+            Ok(f) -> parse_with_whole(int.to_string(f), "0/1")
+            Error(_) -> parse_fraction(fraction)
+          }
+        }
+        _ -> Error(ConversionError(fraction))
+      }
+    }
+  }
+}
+
+fn parse_with_whole(
+  whole: String,
+  fraction: String,
+) -> Result(Fraction, FractionError) {
+  use whole <- result.try(
+    int.parse(whole) |> result.replace_error(ConversionError(whole)),
+  )
+
+  case string.split(fraction, "/") {
+    [numer, denom] -> {
+      use numer <- result.try(
+        int.parse(numer) |> result.replace_error(ConversionError(numer)),
+      )
+      use denom <- result.try(
+        int.parse(denom) |> result.replace_error(ConversionError(denom)),
+      )
+
+      new2(whole, numer, denom)
+    }
+    _ -> Error(ConversionError(fraction))
+  }
+}
+
+fn parse_fraction(fraction: String) -> Result(Fraction, FractionError) {
+  case string.split(fraction, "/") {
+    [numer, denom] -> {
+      use numer <- result.try(
+        int.parse(numer) |> result.replace_error(ConversionError(numer)),
+      )
+      use denom <- result.try(
+        int.parse(denom) |> result.replace_error(ConversionError(denom)),
+      )
+
+      new(numer, denom)
+    }
+    _ -> Error(ConversionError(fraction))
+  }
 }
 
 type InternalFraction {
