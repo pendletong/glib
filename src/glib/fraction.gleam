@@ -124,6 +124,50 @@ pub fn from_string(fraction: String) -> Result(Fraction, FractionError) {
   }
 }
 
+pub fn reduced_fraction(fr: Fraction) -> Result(Fraction, FractionError) {
+  use <- bool.guard(
+    when: fr.denominator == 0,
+    return: Error(ZeroDenominator("Denominator is zero")),
+  )
+  use <- bool.guard(when: fr.numerator == 0, return: Ok(Fraction(0, 1)))
+
+  let fr = case fr.denominator == min_int_value, int.is_even(fr.numerator) {
+    True, True -> Fraction(fr.numerator / 2, fr.denominator / 2)
+    _, _ -> fr
+  }
+
+  use fr <- result.try(case fr.denominator < 0 {
+    True -> {
+      case fr.numerator == min_int_value, fr.denominator == min_int_value {
+        False, False -> Ok(Fraction(-fr.numerator, -fr.denominator))
+        _, _ -> Error(Overflow("Denominator or Numerator is -2_147_483_648"))
+      }
+    }
+    False -> Ok(fr)
+  })
+
+  use gcd <- result.try(gcd(fr.numerator, fr.denominator))
+  Ok(Fraction(fr.numerator / gcd, fr.denominator / gcd))
+}
+
+pub fn negate(fr: Fraction) -> Result(Fraction, FractionError) {
+  case fr.numerator == min_int_value {
+    True -> Error(Overflow("Cannot negate"))
+    False -> {
+      Ok(Fraction(-fr.numerator, fr.denominator))
+    }
+  }
+}
+
+pub fn abs(fr: Fraction) -> Result(Fraction, FractionError) {
+  case fr.numerator >= 0 {
+    True -> Ok(fr)
+    False -> negate(fr)
+  }
+}
+
+// Internal functions
+
 fn parse_with_whole(
   whole: String,
   fraction: String,
@@ -222,33 +266,7 @@ fn construct_fraction(
   }
 }
 
-pub fn reduced_fraction(fr: Fraction) -> Result(Fraction, FractionError) {
-  use <- bool.guard(
-    when: fr.denominator == 0,
-    return: Error(ZeroDenominator("Denominator is zero")),
-  )
-  use <- bool.guard(when: fr.numerator == 0, return: Ok(Fraction(0, 1)))
-
-  let fr = case fr.denominator == min_int_value, int.is_even(fr.numerator) {
-    True, True -> Fraction(fr.numerator / 2, fr.denominator / 2)
-    _, _ -> fr
-  }
-
-  use fr <- result.try(case fr.denominator < 0 {
-    True -> {
-      case fr.numerator == min_int_value, fr.denominator == min_int_value {
-        False, False -> Ok(Fraction(-fr.numerator, -fr.denominator))
-        _, _ -> Error(Overflow("Denominator or Numerator is -2_147_483_648"))
-      }
-    }
-    False -> Ok(fr)
-  })
-
-  use gcd <- result.try(gcd(fr.numerator, fr.denominator))
-  Ok(Fraction(fr.numerator / gcd, fr.denominator / gcd))
-}
-
-pub fn gcd(u: Int, v: Int) -> Result(Int, FractionError) {
+fn gcd(u: Int, v: Int) -> Result(Int, FractionError) {
   case u == 0 || v == 0 {
     True -> {
       case u == min_int_value || v == min_int_value {

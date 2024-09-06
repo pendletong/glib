@@ -276,3 +276,59 @@ pub fn from_string_test() {
   fraction.from_string(" ")
   |> should.be_error
 }
+
+pub fn abs_test() {
+  fraction.new(1, 5)
+  |> should.be_ok
+  |> fraction.abs
+  |> should.be_ok
+  |> should.equal(Fraction(1, 5))
+
+  fraction.new(-1, 5)
+  |> should.be_ok
+  |> fraction.abs
+  |> should.be_ok
+  |> should.equal(Fraction(1, 5))
+
+  fraction.new(2_147_483_647, 1)
+  |> should.be_ok
+  |> fraction.abs
+  |> should.be_ok
+  |> should.equal(Fraction(2_147_483_647, 1))
+
+  fraction.new(2_147_483_647, -1)
+  |> should.be_ok
+  |> fraction.abs
+  |> should.be_ok
+  |> should.equal(Fraction(2_147_483_647, 1))
+
+  fraction.new(-2_147_483_648, 1)
+  |> should.be_ok
+  |> fraction.abs
+  |> should.be_error
+}
+
+pub fn negate_test() {
+  fraction.new(1, 5)
+  |> should.be_ok
+  |> fraction.negate
+  |> should.be_ok
+  |> should.equal(Fraction(-1, 5))
+
+  fraction.new(-1, 5)
+  |> should.be_ok
+  |> fraction.negate
+  |> should.be_ok
+  |> should.equal(Fraction(1, 5))
+
+  fraction.new(2_147_483_646, 2_147_483_647)
+  |> should.be_ok
+  |> fraction.negate
+  |> should.be_ok
+  |> should.equal(Fraction(-2_147_483_646, 2_147_483_647))
+
+  fraction.new(-2_147_483_648, 1)
+  |> should.be_ok
+  |> fraction.negate
+  |> should.be_error
+}
