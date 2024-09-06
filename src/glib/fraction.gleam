@@ -179,6 +179,14 @@ pub fn compare(fr1: Fraction, fr2: Fraction) -> Order {
   int.compare(fr1.numerator * fr2.denominator, fr1.denominator * fr2.numerator)
 }
 
+pub fn to_float(fr1: Fraction) -> Float {
+  int.to_float(fr1.numerator) /. int.to_float(fr1.denominator)
+}
+
+pub fn to_int(fr1: Fraction) -> Int {
+  fr1.numerator / fr1.denominator
+}
+
 // Internal functions
 
 fn add_or_sub(

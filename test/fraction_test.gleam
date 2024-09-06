@@ -713,3 +713,15 @@ pub fn compare_test() {
   fraction.compare(f1, f2) |> should.equal(Gt)
   fraction.compare(f2, f2) |> should.equal(Eq)
 }
+
+pub fn conversion_test() {
+  let f1 =
+    fraction.new2(3, 7, 8)
+    |> should.be_ok
+
+  fraction.to_int(f1)
+  |> should.equal(3)
+
+  fraction.to_float(f1)
+  |> should.equal(3.875)
+}
