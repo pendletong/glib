@@ -203,6 +203,22 @@ pub fn proper_whole(fr1: Fraction) -> Int {
   to_int(fr1)
 }
 
+pub fn inverse(fr1: Fraction) -> Result(Fraction, FractionError) {
+  use <- bool.guard(
+    when: fr1.numerator == 0,
+    return: Error(ZeroDenominator("Inverse")),
+  )
+  use <- bool.guard(
+    when: fr1.numerator == -2_147_483_648,
+    return: Error(Overflow("Inverse")),
+  )
+
+  case fr1.numerator < 0 {
+    True -> Ok(Fraction(-fr1.denominator, -fr1.numerator))
+    False -> Ok(Fraction(fr1.denominator, fr1.numerator))
+  }
+}
+
 // Internal functions
 
 fn add_or_sub(

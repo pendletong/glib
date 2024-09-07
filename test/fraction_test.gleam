@@ -754,3 +754,51 @@ pub fn get_test() {
   fraction.proper_numerator(f1) |> should.equal(0)
   fraction.proper_whole(f1) |> should.equal(-2_147_483_648)
 }
+
+pub fn inverse_test() {
+  let f1 =
+    fraction.new(10, 30)
+    |> should.be_ok
+
+  fraction.inverse(f1)
+  |> should.be_ok
+  |> should.equal(Fraction(30, 10))
+
+  let f1 =
+    fraction.new(102, 20)
+    |> should.be_ok
+
+  fraction.inverse(f1)
+  |> should.be_ok
+  |> should.equal(Fraction(20, 102))
+
+  let f1 =
+    fraction.new(-10, 30)
+    |> should.be_ok
+
+  fraction.inverse(f1)
+  |> should.be_ok
+  |> should.equal(Fraction(-30, 10))
+
+  let f1 =
+    fraction.new(0, 30)
+    |> should.be_ok
+
+  fraction.inverse(f1)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(-2_147_483_648, 1)
+    |> should.be_ok
+
+  fraction.inverse(f1)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(2_147_483_647, 1)
+    |> should.be_ok
+
+  fraction.inverse(f1)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 2_147_483_647))
+}
