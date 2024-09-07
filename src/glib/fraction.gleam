@@ -187,6 +187,22 @@ pub fn to_int(fr1: Fraction) -> Int {
   fr1.numerator / fr1.denominator
 }
 
+pub fn numerator(fr1: Fraction) -> Int {
+  fr1.numerator
+}
+
+pub fn denominator(fr1: Fraction) -> Int {
+  fr1.denominator
+}
+
+pub fn proper_numerator(fr1: Fraction) -> Int {
+  int.absolute_value(fr1.numerator % fr1.denominator)
+}
+
+pub fn proper_whole(fr1: Fraction) -> Int {
+  to_int(fr1)
+}
+
 // Internal functions
 
 fn add_or_sub(
@@ -219,9 +235,7 @@ fn add_or_sub(
     False -> uvp - upv
   }
 
-  use tmod <- result.try(
-    int.modulo(t, gcd1) |> result.replace_error(ZeroDenominator("")),
-  )
+  let tmod = t % gcd1
 
   use gcd2 <- result.try(case tmod == 0 {
     True -> Ok(gcd1)

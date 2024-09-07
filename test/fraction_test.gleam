@@ -725,3 +725,32 @@ pub fn conversion_test() {
   fraction.to_float(f1)
   |> should.equal(3.875)
 }
+
+pub fn get_test() {
+  let f1 =
+    fraction.new2(3, 5, 6)
+    |> should.be_ok
+
+  fraction.numerator(f1) |> should.equal(23)
+  fraction.denominator(f1) |> should.equal(6)
+  fraction.proper_numerator(f1) |> should.equal(5)
+  fraction.proper_whole(f1) |> should.equal(3)
+
+  let f1 =
+    fraction.new2(-3, 5, 6)
+    |> should.be_ok
+
+  fraction.numerator(f1) |> should.equal(-23)
+  fraction.denominator(f1) |> should.equal(6)
+  fraction.proper_numerator(f1) |> should.equal(5)
+  fraction.proper_whole(f1) |> should.equal(-3)
+
+  let f1 =
+    fraction.new2(-2_147_483_648, 0, 1)
+    |> should.be_ok
+
+  fraction.numerator(f1) |> should.equal(-2_147_483_648)
+  fraction.denominator(f1) |> should.equal(1)
+  fraction.proper_numerator(f1) |> should.equal(0)
+  fraction.proper_whole(f1) |> should.equal(-2_147_483_648)
+}
