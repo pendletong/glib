@@ -1,6 +1,7 @@
 import gleam/bool
 import gleam/float
 import gleam/int
+import gleam/io
 import gleam/iterator
 import gleam/list.{Continue, Stop}
 import gleam/order.{type Order, Eq, Gt, Lt}
@@ -19,9 +20,9 @@ pub type FractionError {
   DivideByZero(a: String)
 }
 
-const max_int_value = 2_147_483_647
+const max_int_value = 9_007_199_254_740_991
 
-const min_int_value = -2_147_483_648
+const min_int_value = -9_007_199_254_740_991
 
 const max_float_value = 1.7976931348623157e308
 
@@ -35,7 +36,7 @@ pub fn from_float(num: Float) -> Result(Fraction, FractionError) {
 
   use <- bool.guard(
     when: num >. int.to_float(max_int_value),
-    return: Error(TooLarge("> 2_147_483_647")),
+    return: Error(TooLarge("> 9007199254740991")),
   )
 
   let whole = float.truncate(num)
@@ -53,7 +54,7 @@ pub fn new(numerator: Int, denominator: Int) -> Result(Fraction, FractionError) 
     True -> {
       use <- bool.guard(
         when: numerator == min_int_value || denominator == min_int_value,
-        return: Error(Overflow("Denominator or Numerator is -2_147_483_648")),
+        return: Error(Overflow("Denominator or Numerator is -9007199254740991")),
       )
       Ok(Fraction(-numerator, -denominator))
     }
@@ -141,7 +142,7 @@ pub fn reduce(fr: Fraction) -> Result(Fraction, FractionError) {
     True -> {
       case fr.numerator == min_int_value, fr.denominator == min_int_value {
         False, False -> Ok(Fraction(-fr.numerator, -fr.denominator))
-        _, _ -> Error(Overflow("Denominator or Numerator is -2_147_483_648"))
+        _, _ -> Error(Overflow("Denominator or Numerator is -9007199254740991"))
       }
     }
     False -> Ok(fr)
@@ -152,8 +153,8 @@ pub fn reduce(fr: Fraction) -> Result(Fraction, FractionError) {
 }
 
 pub fn negate(fr: Fraction) -> Result(Fraction, FractionError) {
-  case fr.numerator == min_int_value {
-    True -> Error(Overflow("Cannot negate"))
+  case -fr.numerator > max_int_value {
+    True -> Error(Overflow("Cannot negate " <> int.to_string(fr.numerator)))
     False -> {
       Ok(Fraction(-fr.numerator, fr.denominator))
     }
@@ -214,7 +215,7 @@ pub fn inverse(fr1: Fraction) -> Result(Fraction, FractionError) {
     return: Error(ZeroDenominator("Inverse")),
   )
   use <- bool.guard(
-    when: fr1.numerator == -2_147_483_648,
+    when: fr1.numerator == min_int_value,
     return: Error(Overflow("Inverse")),
   )
 

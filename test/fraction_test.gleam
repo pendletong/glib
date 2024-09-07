@@ -1,8 +1,13 @@
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/order.{Eq, Gt, Lt}
 import gleeunit/should
 import glib/fraction.{Fraction}
+
+const max_int_value = 9_007_199_254_740_991
+
+const min_int_value = -9_007_199_254_740_991
 
 pub fn new_test() {
   fraction.new(0, 1)
@@ -46,7 +51,7 @@ pub fn new_test() {
   fraction.new(-5, 0)
   |> should.be_error
 
-  fraction.new(1, -2_147_483_648)
+  fraction.new(1, min_int_value)
   |> should.be_error
 }
 
@@ -82,20 +87,20 @@ pub fn new2_test() {
   |> should.be_error
   fraction.new2(-1, 1, 0)
   |> should.be_error
-  fraction.new2(2_147_483_647, 1, 2)
+  fraction.new2(max_int_value, 1, 2)
   |> should.be_error
-  fraction.new2(-2_147_483_647, 1, 2)
+  fraction.new2(-max_int_value, 1, 2)
   |> should.be_error
 
-  fraction.new2(-1, 0, 2_147_483_647)
+  fraction.new2(-1, 0, max_int_value)
   |> should.be_ok
-  |> should.equal(Fraction(-2_147_483_647, 2_147_483_647))
+  |> should.equal(Fraction(-max_int_value, max_int_value))
 
-  fraction.new2(0, 1, -2_147_483_648)
+  fraction.new2(0, 1, min_int_value)
   |> should.be_error
-  fraction.new2(1, 1, 2_147_483_647)
+  fraction.new2(1, 1, max_int_value)
   |> should.be_error
-  fraction.new2(-1, 2, 2_147_483_647)
+  fraction.new2(-1, 2, max_int_value)
   |> should.be_error
 }
 
@@ -136,10 +141,10 @@ pub fn from_float_test() {
   |> should.be_ok
   |> should.equal(Fraction(0, 1))
 
-  fraction.from_float(2_147_483_648.0)
+  fraction.from_float(int.to_float(max_int_value + 1))
   |> should.be_error
 
-  fraction.from_float(-2_147_483_649.0)
+  fraction.from_float(int.to_float(min_int_value - 1))
   |> should.be_error
 
   list.range(1, 100)
@@ -169,7 +174,7 @@ pub fn from_string_test() {
   |> should.be_error
   fraction.from_string("haha")
   |> should.be_error
-  fraction.from_string("2147483648")
+  fraction.from_string(int.to_string(max_int_value + 1))
   |> should.be_error
   fraction.from_string(".")
   |> should.be_error
@@ -290,22 +295,17 @@ pub fn abs_test() {
   |> should.be_ok
   |> should.equal(Fraction(1, 5))
 
-  fraction.new(2_147_483_647, 1)
+  fraction.new(max_int_value, 1)
   |> should.be_ok
   |> fraction.abs
   |> should.be_ok
-  |> should.equal(Fraction(2_147_483_647, 1))
+  |> should.equal(Fraction(max_int_value, 1))
 
-  fraction.new(2_147_483_647, -1)
+  fraction.new(max_int_value, -1)
   |> should.be_ok
   |> fraction.abs
   |> should.be_ok
-  |> should.equal(Fraction(2_147_483_647, 1))
-
-  fraction.new(-2_147_483_648, 1)
-  |> should.be_ok
-  |> fraction.abs
-  |> should.be_error
+  |> should.equal(Fraction(max_int_value, 1))
 }
 
 pub fn negate_test() {
@@ -321,16 +321,11 @@ pub fn negate_test() {
   |> should.be_ok
   |> should.equal(Fraction(1, 5))
 
-  fraction.new(2_147_483_646, 2_147_483_647)
+  fraction.new(max_int_value - 1, max_int_value)
   |> should.be_ok
   |> fraction.negate
   |> should.be_ok
-  |> should.equal(Fraction(-2_147_483_646, 2_147_483_647))
-
-  fraction.new(-2_147_483_648, 1)
-  |> should.be_ok
-  |> fraction.negate
-  |> should.be_error
+  |> should.equal(Fraction(-max_int_value + 1, max_int_value))
 }
 
 pub fn add_test() {
@@ -373,14 +368,14 @@ pub fn add_test() {
   |> should.equal(Fraction(-1, 5))
 
   let f1 =
-    fraction.new(2_147_483_647 - 1, 1)
+    fraction.new(max_int_value - 1, 1)
     |> should.be_ok
   let f2 =
     fraction.new(1, 1)
     |> should.be_ok
   fraction.add(f1, f2)
   |> should.be_ok
-  |> should.equal(Fraction(2_147_483_647, 1))
+  |> should.equal(Fraction(max_int_value, 1))
 
   let f1 =
     fraction.new(3, 5)
@@ -438,27 +433,27 @@ pub fn add_test() {
   |> should.equal(Fraction(52_451, 1_934_917_632))
 
   let f1 =
-    fraction.new(-2_147_483_648, 3)
+    fraction.new(min_int_value, 7)
     |> should.be_ok
   let f2 =
-    fraction.new(1, 3)
+    fraction.new(1, 7)
     |> should.be_ok
   fraction.add(f1, f2)
   |> should.be_ok
-  |> should.equal(Fraction(-2_147_483_647, 3))
+  |> should.equal(Fraction(min_int_value + 1, 7))
 
   let f1 =
-    fraction.new(2_147_483_647 - 1, 1)
+    fraction.new(max_int_value - 1, 1)
     |> should.be_ok
   let f2 =
     fraction.new(1, 1)
     |> should.be_ok
   fraction.add(f1, f2)
   |> should.be_ok
-  |> should.equal(Fraction(2_147_483_647, 1))
+  |> should.equal(Fraction(max_int_value, 1))
 
   let f1 =
-    fraction.new(2_147_483_647, 1)
+    fraction.new(max_int_value, 1)
     |> should.be_ok
   let f2 =
     fraction.new(1, 1)
@@ -467,7 +462,7 @@ pub fn add_test() {
   |> should.be_error
 
   let f1 =
-    fraction.new(-2_147_483_648, 5)
+    fraction.new(min_int_value, 5)
     |> should.be_ok
   let f2 =
     fraction.new(-1, 5)
@@ -476,24 +471,24 @@ pub fn add_test() {
   |> should.be_error
 
   let f1 =
-    fraction.new(2_147_483_647, 1)
+    fraction.new(max_int_value, 1)
     |> should.be_ok
 
   fraction.add(f1, f1)
   |> should.be_error
 
   let f1 =
-    fraction.new(-2_147_483_647, 1)
+    fraction.new(-max_int_value, 1)
     |> should.be_ok
 
   fraction.add(f1, f1)
   |> should.be_error
 
   let f1 =
-    fraction.new(3, 327_680)
+    fraction.new(3, 327_680_273)
     |> should.be_ok
   let f2 =
-    fraction.new(2, 59_049)
+    fraction.new(2, 59_049_257)
     |> should.be_ok
   fraction.add(f1, f2)
   |> should.be_error
@@ -591,38 +586,38 @@ pub fn sub_test() {
   |> should.equal(Fraction(-13_085, 1_934_917_632))
 
   let f1 =
-    fraction.new(-2_147_483_648, 3)
+    fraction.new(min_int_value, 7)
     |> should.be_ok
   let f2 =
-    fraction.new(1, 3)
+    fraction.new(1, 7)
     |> should.be_ok
     |> fraction.negate
     |> should.be_ok
   fraction.sub(f1, f2)
   |> should.be_ok
-  |> should.equal(Fraction(-2_147_483_648 + 1, 3))
+  |> should.equal(Fraction(min_int_value + 1, 7))
 
   let f1 =
-    fraction.new(2_147_483_647, 1)
+    fraction.new(max_int_value, 1)
     |> should.be_ok
   let f2 =
     fraction.new(1, 1)
     |> should.be_ok
   fraction.sub(f1, f2)
   |> should.be_ok
-  |> should.equal(Fraction(2_147_483_647 - 1, 1))
+  |> should.equal(Fraction(max_int_value - 1, 1))
 
   let f1 =
-    fraction.new(1, 2_147_483_647)
+    fraction.new(1, max_int_value)
     |> should.be_ok
   let f2 =
-    fraction.new(1, 2_147_483_647 - 1)
+    fraction.new(1, max_int_value - 1)
     |> should.be_ok
   fraction.sub(f1, f2)
   |> should.be_error
 
   let f1 =
-    fraction.new(-2_147_483_648, 5)
+    fraction.new(min_int_value, 5)
     |> should.be_ok
   let f2 =
     fraction.new(1, 5)
@@ -631,7 +626,7 @@ pub fn sub_test() {
   |> should.be_error
 
   let f1 =
-    fraction.new(-2_147_483_648, 1)
+    fraction.new(min_int_value, 1)
     |> should.be_ok
   let f2 =
     fraction.new(1, 1)
@@ -640,7 +635,7 @@ pub fn sub_test() {
   |> should.be_error
 
   let f1 =
-    fraction.new(2_147_483_647, 1)
+    fraction.new(max_int_value, 1)
     |> should.be_ok
   let f2 =
     fraction.new(1, 1)
@@ -651,10 +646,10 @@ pub fn sub_test() {
   |> should.be_error
 
   let f1 =
-    fraction.new(3, 327_680)
+    fraction.new(3, 327_680_273)
     |> should.be_ok
   let f2 =
-    fraction.new(2, 59_049)
+    fraction.new(2, 59_049_257)
     |> should.be_ok
   fraction.sub(f1, f2)
   |> should.be_error
@@ -707,7 +702,7 @@ pub fn compare_test() {
     fraction.new(3, 5)
     |> should.be_ok
   let f2 =
-    fraction.new2(-1, 1, 2_147_483_647)
+    fraction.new2(-1, 1, max_int_value - 1)
     |> should.be_ok
   fraction.compare(f1, f2) |> should.equal(Gt)
   fraction.compare(f2, f2) |> should.equal(Eq)
@@ -745,13 +740,13 @@ pub fn get_test() {
   fraction.proper_whole(f1) |> should.equal(-3)
 
   let f1 =
-    fraction.new2(-2_147_483_648, 0, 1)
+    fraction.new2(min_int_value, 0, 1)
     |> should.be_ok
 
-  fraction.numerator(f1) |> should.equal(-2_147_483_648)
+  fraction.numerator(f1) |> should.equal(min_int_value)
   fraction.denominator(f1) |> should.equal(1)
   fraction.proper_numerator(f1) |> should.equal(0)
-  fraction.proper_whole(f1) |> should.equal(-2_147_483_648)
+  fraction.proper_whole(f1) |> should.equal(min_int_value)
 }
 
 pub fn inverse_test() {
@@ -787,19 +782,19 @@ pub fn inverse_test() {
   |> should.be_error
 
   let f1 =
-    fraction.new(-2_147_483_648, 1)
+    fraction.new(min_int_value, 1)
     |> should.be_ok
 
   fraction.inverse(f1)
   |> should.be_error
 
   let f1 =
-    fraction.new(2_147_483_647, 1)
+    fraction.new(max_int_value, 1)
     |> should.be_ok
 
   fraction.inverse(f1)
   |> should.be_ok
-  |> should.equal(Fraction(1, 2_147_483_647))
+  |> should.equal(Fraction(1, max_int_value))
 }
 
 pub fn multiply_test() {
@@ -869,24 +864,24 @@ pub fn multiply_test() {
   |> should.equal(Fraction(3, 8))
 
   let f1 =
-    fraction.new(2_147_483_647, 1)
+    fraction.new(max_int_value, 1)
     |> should.be_ok
   let f2 =
-    fraction.new(-2_147_483_648, 2_147_483_647)
+    fraction.new(min_int_value, max_int_value)
     |> should.be_ok
   fraction.multiply(f1, f2)
   |> should.be_ok
-  |> should.equal(Fraction(-2_147_483_648, 1))
+  |> should.equal(Fraction(min_int_value, 1))
 
   let f1 =
-    fraction.new(1, 2_147_483_647)
+    fraction.new(1, max_int_value)
     |> should.be_ok
 
   fraction.multiply(f1, f1)
   |> should.be_error
 
   let f1 =
-    fraction.new(1, -2_147_483_647)
+    fraction.new(1, -max_int_value + 1)
     |> should.be_ok
 
   fraction.multiply(f1, f1)
@@ -934,31 +929,31 @@ pub fn divide_test() {
   |> should.equal(Fraction(3, 5))
 
   let f1 =
-    fraction.new(1, 2_147_483_647)
+    fraction.new(1, max_int_value)
     |> should.be_ok
   fraction.divide(f1, f1)
   |> should.be_ok
   |> should.equal(Fraction(1, 1))
 
   let f1 =
-    fraction.new(-2_147_483_648, 2_147_483_647)
+    fraction.new(min_int_value, max_int_value)
     |> should.be_ok
   let f2 =
-    fraction.new(1, 2_147_483_647)
+    fraction.new(1, max_int_value)
     |> should.be_ok
   fraction.divide(f1, f2)
   |> should.be_ok
-  |> should.equal(Fraction(-2_147_483_648, 1))
+  |> should.equal(Fraction(min_int_value, 1))
 
   let f1 =
-    fraction.new(1, 2_147_483_647)
+    fraction.new(1, max_int_value)
     |> should.be_ok
   let f2 = fraction.inverse(f1) |> should.be_ok
   fraction.divide(f1, f2)
   |> should.be_error
 
   let f1 =
-    fraction.new(1, -2_147_483_647)
+    fraction.new(1, -max_int_value + 1)
     |> should.be_ok
   let f2 = fraction.inverse(f1) |> should.be_ok
   fraction.divide(f1, f2)
@@ -1066,7 +1061,7 @@ pub fn power_test() {
   let f1 =
     fraction.new(0, 5)
     |> should.be_ok
-  fraction.power(f1, -2_147_483_648)
+  fraction.power(f1, min_int_value)
   |> should.be_error
 
   let f1 =
@@ -1103,28 +1098,35 @@ pub fn power_test() {
   let f1 =
     fraction.new(1, 1)
     |> should.be_ok
-  fraction.power(f1, 2_147_483_647)
+  fraction.power(f1, max_int_value)
   |> should.be_ok
   |> should.equal(Fraction(1, 1))
   let f1 =
     fraction.new(1, 1)
     |> should.be_ok
-  fraction.power(f1, -2_147_483_648)
+  fraction.power(f1, min_int_value)
   |> should.be_ok
   |> should.equal(Fraction(1, 1))
 
   let f1 =
-    fraction.new(2_147_483_647, 1)
+    fraction.new(max_int_value, 1)
     |> should.be_ok
   fraction.power(f1, 2)
   |> should.be_error
   let f1 =
-    fraction.new(-2_147_483_648, 1)
+    fraction.new(min_int_value, 1)
     |> should.be_ok
   fraction.power(f1, 3)
   |> should.be_error
   let f1 =
     fraction.new(65_536, 1)
+    |> should.be_ok
+  fraction.power(f1, 2)
+  |> should.be_ok
+  |> should.equal(Fraction(4_294_967_296, 1))
+
+  let f1 =
+    fraction.new(95_000_000, 1)
     |> should.be_ok
   fraction.power(f1, 2)
   |> should.be_error
@@ -1174,11 +1176,11 @@ pub fn reduce_test() {
   |> should.equal(Fraction(0, 1))
 
   let f1 =
-    fraction.new(-2_147_483_648, 2)
+    fraction.new(min_int_value, 6361)
     |> should.be_ok
   fraction.reduce(f1)
   |> should.be_ok
-  |> should.equal(Fraction(-2_147_483_648 / 2, 1))
+  |> should.equal(Fraction(min_int_value / 6361, 1))
 }
 
 pub fn to_string_test() {
@@ -1213,16 +1215,16 @@ pub fn to_string_test() {
   |> should.equal("4/4")
 
   let f1 =
-    fraction.new2(-2_147_483_648, 0, 1)
+    fraction.new2(min_int_value, 0, 1)
     |> should.be_ok
   fraction.to_string(f1)
-  |> should.equal("-2147483648/1")
+  |> should.equal("-9007199254740991/1")
 
   let f1 =
-    fraction.new2(-1, 1, 2_147_483_647)
+    fraction.new2(-1, 1, max_int_value - 1)
     |> should.be_ok
   fraction.to_string(f1)
-  |> should.equal("-2147483648/2147483647")
+  |> should.equal("-9007199254740991/9007199254740990")
 }
 
 pub fn to_proper_string_test() {
@@ -1269,16 +1271,16 @@ pub fn to_proper_string_test() {
   |> should.equal("-1 3/5")
 
   let f1 =
-    fraction.new2(-2_147_483_648, 0, 1)
+    fraction.new2(min_int_value, 0, 1)
     |> should.be_ok
   fraction.to_proper_string(f1)
-  |> should.equal("-2147483648")
+  |> should.equal(int.to_string(min_int_value))
 
   let f1 =
-    fraction.new2(-1, 1, 2_147_483_647)
+    fraction.new2(-1, 1, max_int_value - 1)
     |> should.be_ok
   fraction.to_proper_string(f1)
-  |> should.equal("-1 1/2147483647")
+  |> should.equal("-1 1/" <> int.to_string(max_int_value - 1))
 
   let f1 =
     fraction.from_float(-1.0)
