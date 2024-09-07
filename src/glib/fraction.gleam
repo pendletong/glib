@@ -180,6 +180,10 @@ pub fn compare(fr1: Fraction, fr2: Fraction) -> Order {
   int.compare(fr1.numerator * fr2.denominator, fr1.denominator * fr2.numerator)
 }
 
+pub fn equals(fr1: Fraction, fr2: Fraction) -> Bool {
+  compare(fr1, fr2) == Eq
+}
+
 pub fn to_float(fr1: Fraction) -> Float {
   int.to_float(fr1.numerator) /. int.to_float(fr1.denominator)
 }
@@ -244,6 +248,41 @@ pub fn divide(fr1: Fraction, fr2: Fraction) -> Result(Fraction, FractionError) {
 
   use fr2_inv <- result.try(inverse(fr2))
   multiply(fr1, fr2_inv)
+}
+
+pub fn power(fr1: Fraction, pow: Int) -> Result(Fraction, FractionError) {
+  use <- bool.guard(when: pow == 1, return: Ok(fr1))
+  use <- bool.guard(when: pow == 0, return: Ok(Fraction(1, 1)))
+
+  case pow < 0 {
+    True -> {
+      case pow == min_int_value {
+        True -> {
+          use inv <- result.try(inverse(fr1))
+          use sq <- result.try(power(inv, 2))
+
+          let half_pow = pow / 2
+          power(sq, -half_pow)
+        }
+        False -> {
+          use inv <- result.try(inverse(fr1))
+          power(inv, -pow)
+        }
+      }
+    }
+    False -> {
+      use fr2 <- result.try(multiply(fr1, fr1))
+      use half_pow <- result.try(power(fr2, pow / 2))
+      case int.is_even(pow) {
+        True -> {
+          Ok(half_pow)
+        }
+        False -> {
+          multiply(half_pow, fr1)
+        }
+      }
+    }
+  }
 }
 
 // Internal functions

@@ -964,3 +964,168 @@ pub fn divide_test() {
   fraction.divide(f1, f2)
   |> should.be_error
 }
+
+pub fn power_test() {
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  fraction.power(f1, 0)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 1))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  fraction.power(f1, 1)
+  |> should.be_ok
+  |> should.equal(Fraction(3, 5))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  fraction.power(f1, 3)
+  |> should.be_ok
+  |> should.equal(Fraction(27, 125))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  fraction.power(f1, -1)
+  |> should.be_ok
+  |> should.equal(Fraction(5, 3))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  fraction.power(f1, -2)
+  |> should.be_ok
+  |> should.equal(Fraction(25, 9))
+
+  let f1 =
+    fraction.new(6, 10)
+    |> should.be_ok
+  fraction.power(f1, 0)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 1))
+
+  let f1 =
+    fraction.new(6, 10)
+    |> should.be_ok
+  fraction.power(f1, 1)
+  |> should.be_ok
+  |> should.equal(Fraction(6, 10))
+
+  let f1 =
+    fraction.new(6, 10)
+    |> should.be_ok
+  fraction.power(f1, 2)
+  |> should.be_ok
+  |> should.equal(Fraction(9, 25))
+
+  let f1 =
+    fraction.new(6, 10)
+    |> should.be_ok
+  fraction.power(f1, 3)
+  |> should.be_ok
+  |> should.equal(Fraction(27, 125))
+
+  let f1 =
+    fraction.new(6, 10)
+    |> should.be_ok
+  fraction.power(f1, -1)
+  |> should.be_ok
+  |> should.equal(Fraction(10, 6))
+
+  let f1 =
+    fraction.new(6, 10)
+    |> should.be_ok
+  fraction.power(f1, -2)
+  |> should.be_ok
+  |> should.equal(Fraction(25, 9))
+
+  let f1 =
+    fraction.new(0, 99)
+    |> should.be_ok
+  fraction.power(f1, 1)
+  |> should.be_ok
+  |> should.equal(Fraction(0, 99))
+
+  let f1 =
+    fraction.new(0, 99)
+    |> should.be_ok
+  fraction.power(f1, 3)
+  |> should.be_ok
+  |> should.equal(Fraction(0, 1))
+
+  let f1 =
+    fraction.new(0, 5)
+    |> should.be_ok
+  fraction.power(f1, -1)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(0, 5)
+    |> should.be_ok
+  fraction.power(f1, -2_147_483_648)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  fraction.power(f1, 0)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 1))
+
+  let f1 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.power(f1, 0)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 1))
+  let f1 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.power(f1, 1)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 1))
+  let f1 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.power(f1, 2)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 1))
+  let f1 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.power(f1, -4)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 1))
+  let f1 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.power(f1, 2_147_483_647)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 1))
+  let f1 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.power(f1, -2_147_483_648)
+  |> should.be_ok
+  |> should.equal(Fraction(1, 1))
+
+  let f1 =
+    fraction.new(2_147_483_647, 1)
+    |> should.be_ok
+  fraction.power(f1, 2)
+  |> should.be_error
+  let f1 =
+    fraction.new(-2_147_483_648, 1)
+    |> should.be_ok
+  fraction.power(f1, 3)
+  |> should.be_error
+  let f1 =
+    fraction.new(65_536, 1)
+    |> should.be_ok
+  fraction.power(f1, 2)
+  |> should.be_error
+}
