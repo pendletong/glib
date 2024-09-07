@@ -125,7 +125,7 @@ pub fn from_string(fraction: String) -> Result(Fraction, FractionError) {
   }
 }
 
-pub fn reduced_fraction(fr: Fraction) -> Result(Fraction, FractionError) {
+pub fn reduce(fr: Fraction) -> Result(Fraction, FractionError) {
   use <- bool.guard(
     when: fr.denominator == 0,
     return: Error(ZeroDenominator("Denominator is zero")),
@@ -240,7 +240,7 @@ pub fn multiply(fr1: Fraction, fr2: Fraction) -> Result(Fraction, FractionError)
     fr1.denominator / gcd2,
     fr2.denominator / gcd1,
   ))
-  reduced_fraction(Fraction(multnum, multden))
+  reduce(Fraction(multnum, multden))
 }
 
 pub fn divide(fr1: Fraction, fr2: Fraction) -> Result(Fraction, FractionError) {
@@ -473,7 +473,7 @@ fn construct_fraction(
     InternalFraction(v0: Fraction(-1, -1), ..) ->
       Error(ConversionError("Too many iterations"))
     _ ->
-      reduced_fraction(Fraction(
+      reduce(Fraction(
         sign * { fr.v0.numerator + whole * fr.v0.denominator },
         fr.v0.denominator,
       ))

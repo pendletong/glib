@@ -147,7 +147,7 @@ pub fn from_float_test() {
     list.range(1, i)
     |> list.each(fn(j) {
       let f1 = fraction.from_float(int.to_float(j) /. int.to_float(i))
-      let f2 = fraction.reduced_fraction(Fraction(j, i))
+      let f2 = fraction.reduce(Fraction(j, i))
       f1 |> should.equal(f2)
     })
   })
@@ -158,7 +158,7 @@ pub fn from_float_test() {
     list.range(1, i)
     |> list.each(fn(j) {
       let f1 = fraction.from_float(int.to_float(j) /. int.to_float(i))
-      let f2 = fraction.reduced_fraction(Fraction(j, i))
+      let f2 = fraction.reduce(Fraction(j, i))
       f1 |> should.equal(f2)
     })
   })
@@ -1128,4 +1128,55 @@ pub fn power_test() {
     |> should.be_ok
   fraction.power(f1, 2)
   |> should.be_error
+}
+
+pub fn reduce_test() {
+  let f1 =
+    fraction.new(48, 128)
+    |> should.be_ok
+  fraction.reduce(f1)
+  |> should.be_ok
+  |> should.equal(Fraction(3, 8))
+
+  let f1 =
+    fraction.new(-2, -3)
+    |> should.be_ok
+  fraction.reduce(f1)
+  |> should.be_ok
+  |> should.equal(Fraction(2, 3))
+
+  let f1 =
+    fraction.new(2, -3)
+    |> should.be_ok
+  fraction.reduce(f1)
+  |> should.be_ok
+  |> should.equal(Fraction(-2, 3))
+
+  let f1 =
+    fraction.new(-2, 3)
+    |> should.be_ok
+  fraction.reduce(f1)
+  |> should.be_ok
+  |> should.equal(Fraction(-2, 3))
+
+  let f1 =
+    fraction.new(0, 1)
+    |> should.be_ok
+  fraction.reduce(f1)
+  |> should.be_ok
+  |> should.equal(Fraction(0, 1))
+
+  let f1 =
+    fraction.new(0, 100)
+    |> should.be_ok
+  fraction.reduce(f1)
+  |> should.be_ok
+  |> should.equal(Fraction(0, 1))
+
+  let f1 =
+    fraction.new(-2_147_483_648, 2)
+    |> should.be_ok
+  fraction.reduce(f1)
+  |> should.be_ok
+  |> should.equal(Fraction(-2_147_483_648 / 2, 1))
 }
