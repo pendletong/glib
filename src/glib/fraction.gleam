@@ -285,6 +285,34 @@ pub fn power(fr1: Fraction, pow: Int) -> Result(Fraction, FractionError) {
   }
 }
 
+pub fn to_string(fr1: Fraction) -> String {
+  int.to_string(fr1.numerator) <> "/" <> int.to_string(fr1.denominator)
+}
+
+pub fn to_proper_string(fr1: Fraction) -> String {
+  use <- bool.guard(when: fr1.numerator == 0, return: "0")
+  use <- bool.guard(when: fr1.numerator == fr1.denominator, return: "1")
+  use <- bool.guard(when: fr1.numerator == -fr1.denominator, return: "-1")
+
+  case -int.absolute_value(fr1.numerator) < -fr1.denominator {
+    True -> {
+      let prop_num = proper_numerator(fr1)
+      case prop_num == 0 {
+        True -> int.to_string(proper_whole(fr1))
+        False ->
+          int.to_string(proper_whole(fr1))
+          <> " "
+          <> int.to_string(prop_num)
+          <> "/"
+          <> int.to_string(fr1.denominator)
+      }
+    }
+    False -> {
+      to_string(fr1)
+    }
+  }
+}
+
 // Internal functions
 
 fn add_or_sub(

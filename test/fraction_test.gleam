@@ -1180,3 +1180,109 @@ pub fn reduce_test() {
   |> should.be_ok
   |> should.equal(Fraction(-2_147_483_648 / 2, 1))
 }
+
+pub fn to_string_test() {
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  fraction.to_string(f1)
+  |> should.equal("3/5")
+
+  let f1 =
+    fraction.new(4, 2)
+    |> should.be_ok
+  fraction.to_string(f1)
+  |> should.equal("4/2")
+
+  let f1 =
+    fraction.new(7, 5)
+    |> should.be_ok
+  fraction.to_string(f1)
+  |> should.equal("7/5")
+
+  let f1 =
+    fraction.new(0, 3)
+    |> should.be_ok
+  fraction.to_string(f1)
+  |> should.equal("0/3")
+
+  let f1 =
+    fraction.new(4, 4)
+    |> should.be_ok
+  fraction.to_string(f1)
+  |> should.equal("4/4")
+
+  let f1 =
+    fraction.new2(-2_147_483_648, 0, 1)
+    |> should.be_ok
+  fraction.to_string(f1)
+  |> should.equal("-2147483648/1")
+
+  let f1 =
+    fraction.new2(-1, 1, 2_147_483_647)
+    |> should.be_ok
+  fraction.to_string(f1)
+  |> should.equal("-2147483648/2147483647")
+}
+
+pub fn to_proper_string_test() {
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  fraction.to_proper_string(f1)
+  |> should.equal("3/5")
+
+  let f1 =
+    fraction.new(8, 5)
+    |> should.be_ok
+  fraction.to_proper_string(f1)
+  |> should.equal("1 3/5")
+
+  let f1 =
+    fraction.new(16, 12)
+    |> should.be_ok
+  fraction.to_proper_string(f1)
+  |> should.equal("1 4/12")
+
+  let f1 =
+    fraction.new(6, 3)
+    |> should.be_ok
+  fraction.to_proper_string(f1)
+  |> should.equal("2")
+
+  let f1 =
+    fraction.new(0, 5)
+    |> should.be_ok
+  fraction.to_proper_string(f1)
+  |> should.equal("0")
+
+  let f1 =
+    fraction.new(23, 23)
+    |> should.be_ok
+  fraction.to_proper_string(f1)
+  |> should.equal("1")
+
+  let f1 =
+    fraction.new(-8, 5)
+    |> should.be_ok
+  fraction.to_proper_string(f1)
+  |> should.equal("-1 3/5")
+
+  let f1 =
+    fraction.new2(-2_147_483_648, 0, 1)
+    |> should.be_ok
+  fraction.to_proper_string(f1)
+  |> should.equal("-2147483648")
+
+  let f1 =
+    fraction.new2(-1, 1, 2_147_483_647)
+    |> should.be_ok
+  fraction.to_proper_string(f1)
+  |> should.equal("-1 1/2147483647")
+
+  let f1 =
+    fraction.from_float(-1.0)
+    |> should.be_ok
+  fraction.to_proper_string(f1)
+  |> should.equal("-1")
+}
