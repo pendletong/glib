@@ -802,3 +802,94 @@ pub fn inverse_test() {
   |> should.be_ok
   |> should.equal(Fraction(1, 2_147_483_647))
 }
+
+pub fn multiply_test() {
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(2, 5)
+    |> should.be_ok
+  fraction.multiply(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(6, 25))
+
+  let f1 =
+    fraction.new(6, 10)
+    |> should.be_ok
+  let f2 =
+    fraction.new(6, 10)
+    |> should.be_ok
+  let f3 =
+    fraction.multiply(f1, f2)
+    |> should.be_ok
+  f3
+  |> should.equal(Fraction(9, 25))
+  fraction.multiply(f3, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(27, 125))
+
+  let f1 =
+    fraction.new(3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(-2, 5)
+    |> should.be_ok
+  fraction.multiply(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(-6, 25))
+
+  let f1 =
+    fraction.new(-3, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(-2, 5)
+    |> should.be_ok
+  fraction.multiply(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(6, 25))
+
+  let f1 =
+    fraction.new(0, 5)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 7)
+    |> should.be_ok
+  fraction.multiply(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(0, 1))
+
+  let f1 =
+    fraction.new(3, 8)
+    |> should.be_ok
+  let f2 =
+    fraction.new(1, 1)
+    |> should.be_ok
+  fraction.multiply(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(3, 8))
+
+  let f1 =
+    fraction.new(2_147_483_647, 1)
+    |> should.be_ok
+  let f2 =
+    fraction.new(-2_147_483_648, 2_147_483_647)
+    |> should.be_ok
+  fraction.multiply(f1, f2)
+  |> should.be_ok
+  |> should.equal(Fraction(-2_147_483_648, 1))
+
+  let f1 =
+    fraction.new(1, 2_147_483_647)
+    |> should.be_ok
+
+  fraction.multiply(f1, f1)
+  |> should.be_error
+
+  let f1 =
+    fraction.new(1, -2_147_483_647)
+    |> should.be_ok
+
+  fraction.multiply(f1, f1)
+  |> should.be_error
+}

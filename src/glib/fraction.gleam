@@ -219,6 +219,25 @@ pub fn inverse(fr1: Fraction) -> Result(Fraction, FractionError) {
   }
 }
 
+pub fn multiply(fr1: Fraction, fr2: Fraction) -> Result(Fraction, FractionError) {
+  use <- bool.guard(
+    when: fr1.numerator == 0 || fr2.numerator == 0,
+    return: Ok(Fraction(0, 1)),
+  )
+
+  use gcd1 <- result.try(gcd(fr1.numerator, fr2.denominator))
+  use gcd2 <- result.try(gcd(fr2.numerator, fr1.denominator))
+  use multnum <- result.try(mul_check(
+    fr1.numerator / gcd1,
+    fr2.numerator / gcd2,
+  ))
+  use multden <- result.try(mul_pos(
+    fr1.denominator / gcd2,
+    fr2.denominator / gcd1,
+  ))
+  reduced_fraction(Fraction(multnum, multden))
+}
+
 // Internal functions
 
 fn add_or_sub(
