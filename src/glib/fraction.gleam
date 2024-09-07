@@ -16,6 +16,7 @@ pub type FractionError {
   Overflow(a: String)
   TooLarge(a: String)
   ConversionError(a: String)
+  DivideByZero(a: String)
 }
 
 const max_int_value = 2_147_483_647
@@ -236,6 +237,13 @@ pub fn multiply(fr1: Fraction, fr2: Fraction) -> Result(Fraction, FractionError)
     fr2.denominator / gcd1,
   ))
   reduced_fraction(Fraction(multnum, multden))
+}
+
+pub fn divide(fr1: Fraction, fr2: Fraction) -> Result(Fraction, FractionError) {
+  use <- bool.guard(when: fr2.numerator == 0, return: Error(DivideByZero("")))
+
+  use fr2_inv <- result.try(inverse(fr2))
+  multiply(fr1, fr2_inv)
 }
 
 // Internal functions
