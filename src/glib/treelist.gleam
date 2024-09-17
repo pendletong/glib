@@ -684,6 +684,34 @@ pub fn append(
   Ok(TreeList(do_append(get_left_stack(tlist2.root, []), tlist.root)))
 }
 
+/// Reduces a treelist of elements into a single value by calling a given function
+/// on each element, going from left to right.
+///
+/// `fold([1, 2, 3], 0, add)` is the equivalent of
+/// `add(add(add(0, 1), 2), 3)`.
+///
+pub fn fold(
+  over list: TreeList(value),
+  from initial: acc,
+  with fun: fn(acc, value) -> acc,
+) -> acc {
+  do_fold(get_left_stack(list.root, []), initial, fun)
+}
+
+/// Reduces a treelist of elements into a single value by calling a given function
+/// on each element, going from right to left.
+///
+/// `fold_right([1, 2, 3], 0, add)` is the equivalent of
+/// `add(add(add(0, 3), 2), 1)`.
+/// 
+pub fn fold_right(
+  over list: TreeList(value),
+  from initial: acc,
+  with fun: fn(acc, value) -> acc,
+) -> acc {
+  do_fold_right(get_right_stack(list.root, []), initial, fun)
+}
+
 // Internal functions
 
 fn get_size(node: Node(value)) -> Int {
@@ -1235,6 +1263,40 @@ fn do_append(node_stack: List(Node(value)), acc: Node(value)) -> Node(value) {
       do_append(
         list.append(get_left_stack(right, []), rest),
         insert_node_at(acc, get_size(acc), value),
+      )
+    }
+    _ -> acc
+  }
+}
+
+fn do_fold(
+  node_stack: List(Node(value)),
+  acc: acc,
+  fold_fn: fn(acc, value) -> acc,
+) -> acc {
+  case node_stack {
+    [Node(value:, right:, ..), ..rest] -> {
+      do_fold(
+        list.append(get_left_stack(right, []), rest),
+        fold_fn(acc, value),
+        fold_fn,
+      )
+    }
+    _ -> acc
+  }
+}
+
+fn do_fold_right(
+  node_stack: List(Node(value)),
+  acc: acc,
+  fold_fn: fn(acc, value) -> acc,
+) -> acc {
+  case node_stack {
+    [Node(value:, left:, ..), ..rest] -> {
+      do_fold_right(
+        list.append(get_right_stack(left, []), rest),
+        fold_fn(acc, value),
+        fold_fn,
       )
     }
     _ -> acc

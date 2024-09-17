@@ -694,3 +694,39 @@ pub fn append_test() {
   list
   |> treelist.append(l1)
 }
+
+pub fn fold_test() {
+  treelist.from_list([1, 2, 3, 4, 5, 6, 7])
+  |> should.be_ok
+  |> treelist.fold([], fn(acc, x) {
+    case x <= 5 {
+      True -> [x, ..acc]
+      False -> acc
+    }
+  })
+  |> should.equal([5, 4, 3, 2, 1])
+
+  // TCO test
+  list.range(0, recursion_test_cycles)
+  |> treelist.from_list
+  |> should.be_ok
+  |> treelist.fold([], fn(acc, x) { [x, ..acc] })
+}
+
+pub fn fold_right_test() {
+  treelist.from_list([1, 2, 3, 4, 5, 6, 7])
+  |> should.be_ok
+  |> treelist.fold_right([], fn(acc, x) {
+    case x <= 5 {
+      True -> [x, ..acc]
+      False -> acc
+    }
+  })
+  |> should.equal([1, 2, 3, 4, 5])
+
+  // TCO test
+  list.range(0, recursion_test_cycles)
+  |> treelist.from_list
+  |> should.be_ok
+  |> treelist.fold_right([], fn(acc, x) { [x, ..acc] })
+}
