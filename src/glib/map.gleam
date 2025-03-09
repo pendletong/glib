@@ -7,10 +7,10 @@
 
 import gleam/float
 import gleam/int
-import gleam/iterator
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import gleam/yielder
 import glib/hash
 import glib/treelist.{type TreeList}
 
@@ -168,14 +168,10 @@ pub fn put(
     Some(Entry(key, value)),
   ))
   Ok(
-    Map(
-      ..map,
-      inner: inner,
-      num_entries: case overwrite {
-        True -> map.num_entries
-        False -> map.num_entries + 1
-      },
-    ),
+    Map(..map, inner: inner, num_entries: case overwrite {
+      True -> map.num_entries
+      False -> map.num_entries + 1
+    }),
   )
 }
 
@@ -309,13 +305,13 @@ pub fn remove(
 /// 
 pub fn keys(map: Map(value)) -> List(String) {
   treelist.to_iterator(map.inner)
-  |> iterator.filter_map(fn(e: Option(Entry(value))) {
+  |> yielder.filter_map(fn(e: Option(Entry(value))) {
     case e {
       None -> Error(Nil)
       Some(en) -> Ok(en.key)
     }
   })
-  |> iterator.to_list
+  |> yielder.to_list
 }
 
 /// Returns a list of the values contained in the map
@@ -334,13 +330,13 @@ pub fn keys(map: Map(value)) -> List(String) {
 /// 
 pub fn values(map: Map(value)) -> List(value) {
   treelist.to_iterator(map.inner)
-  |> iterator.filter_map(fn(e: Option(Entry(value))) {
+  |> yielder.filter_map(fn(e: Option(Entry(value))) {
     case e {
       None -> Error(Nil)
       Some(en) -> Ok(en.value)
     }
   })
-  |> iterator.to_list
+  |> yielder.to_list
 }
 
 /// Returns a list of the tuples #(key, value) contained in the map
@@ -359,13 +355,13 @@ pub fn values(map: Map(value)) -> List(value) {
 /// 
 pub fn entries(map: Map(value)) -> List(#(String, value)) {
   treelist.to_iterator(map.inner)
-  |> iterator.filter_map(fn(e: Option(Entry(value))) {
+  |> yielder.filter_map(fn(e: Option(Entry(value))) {
     case e {
       None -> Error(Nil)
       Some(en) -> Ok(#(en.key, en.value))
     }
   })
-  |> iterator.to_list
+  |> yielder.to_list
 }
 
 /// Returns a string representation of the passed map
@@ -391,14 +387,14 @@ pub fn to_string(
     "{"
     <> string.join(
       treelist.to_iterator(map.inner)
-        |> iterator.filter_map(fn(opt) {
+        |> yielder.filter_map(fn(opt) {
           case opt {
             None -> Error(opt)
             Some(e) ->
               Ok("\"" <> e.key <> "\"" <> ":" <> value_to_string(e.value))
           }
         })
-        |> iterator.to_list,
+        |> yielder.to_list,
       with: ",",
     )
     <> "}",
@@ -615,7 +611,7 @@ fn basic_rehash(map: Map(value), new_size: Int) -> Result(Map(value), Nil) {
   ))
 
   treelist.to_iterator(map.inner)
-  |> iterator.try_fold(Map(..new_map, resizing: True), fn(map, entry) {
+  |> yielder.try_fold(Map(..new_map, resizing: True), fn(map, entry) {
     case entry {
       Some(entry) -> put(map, entry.key, entry.value)
       None -> Ok(map)
@@ -662,7 +658,7 @@ pub fn list_size(map: Map(value)) -> Int {
 /// entries
 pub fn full_count(map: Map(value)) -> Int {
   treelist.to_iterator(map.inner)
-  |> iterator.fold(0, fn(acc, e) {
+  |> yielder.fold(0, fn(acc, e) {
     case e {
       None -> acc
       Some(_) -> acc + 1

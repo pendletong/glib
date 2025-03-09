@@ -1,7 +1,7 @@
 import gleam/int
-import gleam/iterator
 import gleam/list
 import gleam/result
+import gleam/yielder
 import gleeunit/should
 import glib/treelist
 
@@ -230,13 +230,13 @@ pub fn mass_test() {
   // found a binary tree stress test so try that here
   let power = 16
   let tlist =
-    iterator.range(power - 1, 0)
-    |> iterator.fold(
+    yielder.range(power - 1, 0)
+    |> yielder.fold(
       treelist.new() |> treelist.add(0) |> result.unwrap(treelist.new()),
       fn(acc, i) {
         let #(list, _j, _k) =
-          iterator.repeat(i)
-          |> iterator.fold_until(
+          yielder.repeat(i)
+          |> yielder.fold_until(
             #(acc, int.bitwise_shift_left(1, i), 1),
             fn(acc2, i) {
               let #(list, j, k) = acc2
@@ -282,7 +282,7 @@ pub fn to_iterator_test() {
   |> treelist.from_list
   |> should.be_ok
   |> treelist.to_iterator
-  |> iterator.to_list
+  |> yielder.to_list
   |> should.equal(l)
 }
 
@@ -292,7 +292,7 @@ pub fn to_iterator_reverse_test() {
   |> treelist.from_list
   |> should.be_ok
   |> treelist.to_iterator_reverse
-  |> iterator.to_list
+  |> yielder.to_list
   |> should.equal(list.reverse(l))
 }
 

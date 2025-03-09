@@ -9,10 +9,10 @@
 
 import gleam/bool
 import gleam/int
-import gleam/iterator.{type Iterator, Done, Next}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order.{Eq, Gt, Lt}
+import gleam/yielder.{type Yielder, Done, Next}
 
 pub opaque type TreeList(value) {
   TreeList(root: Node(value))
@@ -241,7 +241,7 @@ pub fn repeat(item a: a, times times: Int) -> Result(TreeList(a), Nil) {
 /// // -> [1, 2, 3, 4]
 /// ```
 ///
-pub fn to_iterator(tlist: TreeList(value)) -> Iterator(value) {
+pub fn to_iterator(tlist: TreeList(value)) -> Yielder(value) {
   node_iterator(tlist.root, fn(_node, value, _index) { value })
 }
 
@@ -255,7 +255,7 @@ pub fn to_iterator(tlist: TreeList(value)) -> Iterator(value) {
 /// // -> [4, 3, 2, 1]
 /// ```
 ///
-pub fn to_iterator_reverse(tlist: TreeList(value)) -> Iterator(value) {
+pub fn to_iterator_reverse(tlist: TreeList(value)) -> Yielder(value) {
   node_iterator_reverse(tlist.root, fn(_node, value, _index) { value })
 }
 
@@ -594,9 +594,9 @@ pub fn drop(tlist: TreeList(value), up_to_n: Int) -> TreeList(value) {
     Eq | Lt -> new()
     Gt -> {
       TreeList(
-        iterator.repeat(0)
-        |> iterator.take(up_to_n)
-        |> iterator.fold(tlist.root, fn(acc, n) {
+        yielder.repeat(0)
+        |> yielder.take(up_to_n)
+        |> yielder.fold(tlist.root, fn(acc, n) {
           let #(new_list, _) = remove_node_at(acc, n)
           new_list
         }),
@@ -1016,7 +1016,7 @@ fn do_repeat(a: a, times: Int, acc: Node(a)) -> Node(a) {
 fn node_iterator(
   tlist: Node(value),
   ret_fn: fn(Node(value), value, Int) -> ret_type,
-) -> Iterator(ret_type) {
+) -> Yielder(ret_type) {
   let stack = #(get_left_stack(tlist, []), 0)
   let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
@@ -1028,13 +1028,13 @@ fn node_iterator(
     }
   }
 
-  iterator.unfold(stack, yield)
+  yielder.unfold(stack, yield)
 }
 
 fn node_iterator_reverse(
   tlist: Node(value),
   ret_fn: fn(Node(value), value, Int) -> ret_type,
-) -> Iterator(ret_type) {
+) -> Yielder(ret_type) {
   let stack = #(get_right_stack(tlist, []), 0)
   let yield = fn(acc: #(List(Node(value)), Int)) {
     case acc {
@@ -1046,7 +1046,7 @@ fn node_iterator_reverse(
     }
   }
 
-  iterator.unfold(stack, yield)
+  yielder.unfold(stack, yield)
 }
 
 fn get_left_stack(

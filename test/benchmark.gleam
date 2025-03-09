@@ -1,9 +1,9 @@
 import gleam/bool
 import gleam/dict
 import gleam/int
-import gleam/iterator
 import gleam/list
 import gleam/result
+import gleam/yielder
 import glib/map
 import glib/treelist.{type TreeList}
 import glychee/benchmark
@@ -183,7 +183,7 @@ fn list_iterator_benchmark() {
         callable: fn(test_data: #(TreeList(Int), List(Int))) {
           fn() {
             treelist.to_iterator(test_data.0)
-            |> iterator.to_list
+            |> yielder.to_list
           }
         },
       ),
@@ -191,8 +191,8 @@ fn list_iterator_benchmark() {
         label: "iterator",
         callable: fn(test_data: #(TreeList(Int), List(Int))) {
           fn() {
-            iterator.from_list(test_data.1)
-            |> iterator.to_list
+            yielder.from_list(test_data.1)
+            |> yielder.to_list
           }
         },
       ),
@@ -223,8 +223,8 @@ fn list_benchmark() {
   let gen_data = fn(count: Int) {
     benchmark.Data(
       label: int.to_string(count) <> " items",
-      data: iterator.range(1, count)
-        |> iterator.to_list,
+      data: yielder.range(1, count)
+        |> yielder.to_list,
     )
   }
   benchmark.run(
@@ -310,11 +310,11 @@ fn map_benchmark() {
   let gen_data = fn(count: Int) {
     benchmark.Data(
       label: int.to_string(count) <> " items",
-      data: iterator.repeatedly(fn() {
+      data: yielder.repeatedly(fn() {
         "key_" <> int.to_string(int.random(1_000_000))
       })
-        |> iterator.take(count)
-        |> iterator.to_list,
+        |> yielder.take(count)
+        |> yielder.to_list,
     )
   }
   benchmark.run(

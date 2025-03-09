@@ -1,7 +1,7 @@
 import gleam/int
-import gleam/iterator
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/yielder
 import gleeunit/should
 import glib/map
 
@@ -73,10 +73,10 @@ pub fn put_test() {
   // add 20 new entries
   // this should grow the map so we can test that the
   // enlarged map still contains the original entries
-  let it = iterator.range(0, 19)
+  let it = yielder.range(0, 19)
   let new_map = {
     it
-    |> iterator.fold(new_map, fn(map, i) {
+    |> yielder.fold(new_map, fn(map, i) {
       let key = "growkey" <> int.to_string(i)
       map.put(map, key, key) |> should.be_ok
     })
@@ -85,7 +85,7 @@ pub fn put_test() {
   check_size_vs_count(new_map)
 
   it
-  |> iterator.all(fn(i) {
+  |> yielder.all(fn(i) {
     let key = "growkey" <> int.to_string(i)
     case map.get(new_map, key) |> should.be_ok {
       None -> False
@@ -96,7 +96,7 @@ pub fn put_test() {
   |> should.be_true()
 
   it
-  |> iterator.all(fn(i) {
+  |> yielder.all(fn(i) {
     let key = "growkey" <> int.to_string(i)
     map.contains_key(new_map, key)
   })
@@ -151,10 +151,10 @@ pub fn remove_test() {
 
   check_size_vs_count(new_map)
 
-  let it = iterator.range(0, 19)
+  let it = yielder.range(0, 19)
   let new_map = {
     it
-    |> iterator.fold(new_map, fn(map, i) {
+    |> yielder.fold(new_map, fn(map, i) {
       let key = "growkey" <> int.to_string(i)
       map.put(map, key, key) |> should.be_ok
     })
@@ -192,12 +192,12 @@ fn check_size_vs_count(m) {
 }
 
 pub fn random_test() {
-  iterator.repeatedly(fn() { int.random(995) + 5 })
-  |> iterator.take(50)
-  |> iterator.each(fn(l) {
+  yielder.repeatedly(fn() { int.random(995) + 5 })
+  |> yielder.take(50)
+  |> yielder.each(fn(l) {
     let #(map, keys) =
-      iterator.range(0, l)
-      |> iterator.fold(#(map.new() |> should.be_ok, []), fn(acc, i) {
+      yielder.range(0, l)
+      |> yielder.fold(#(map.new() |> should.be_ok, []), fn(acc, i) {
         let #(new_map, keys) = acc
         let key =
           "growkey"

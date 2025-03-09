@@ -18,6 +18,8 @@ repository = { type = "github", user = "pendletong", repo = "glib" }
 
 [dependencies]
 gleam_stdlib = "~> 0.34 or ~> 1.0"
+gleam_yielder = ">= 1.1.0 and < 2.0.0"
+gleam_regexp = ">= 1.1.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = "~> 1.0"

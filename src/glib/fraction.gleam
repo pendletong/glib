@@ -1,12 +1,19 @@
+//// General Fraction functions
+//// Fraction type allow for accurate storage and manipulation
+//// of fractions
+//// 
+//// There is a current limitation of 9007199254740991 for the 
+//// numerator and denominator. This is because this is the largest
+//// 'safe' integer in Javascript.
+
 import gleam/bool
 import gleam/float
 import gleam/int
-import gleam/io
-import gleam/iterator
 import gleam/list.{Continue, Stop}
 import gleam/order.{type Order, Eq, Gt, Lt}
 import gleam/result
 import gleam/string
+import gleam/yielder
 
 pub type Fraction {
   Fraction(numerator: Int, denominator: Int)
@@ -26,6 +33,22 @@ const min_int_value = -9_007_199_254_740_991
 
 const max_float_value = 1.7976931348623157e308
 
+/// Generates a Fraction from given float
+/// Returns error if number is larger than
+/// the max int value
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// let fr = from_float(0.75)
+/// // -> Ok(Fraction(3, 4))
+/// ```
+/// 
+/// ```gleam
+/// let fr = from_float(0.66666)
+/// // -> Ok(Fraction(2, 3))
+/// ```
+/// 
 pub fn from_float(num: Float) -> Result(Fraction, FractionError) {
   let sign = case float.compare(num, 0.0) {
     Lt -> -1
@@ -479,10 +502,12 @@ fn construct_fraction(
     )
 
   let fr =
-    iterator.range(0, 24)
-    |> iterator.fold_until(a, fn(fr, i) {
+    yielder.range(0, 24)
+    |> yielder.fold_until(a, fn(fr, i) {
       let fr = internal_calc(value, fr)
-
+      // io.debug("DELTA")
+      // io.debug(fr.delta1)
+      // io.debug(fr.delta2)
       case
         fr.delta1 >. fr.delta2
         && fr.v1.denominator <= 10_000
@@ -497,15 +522,19 @@ fn construct_fraction(
         }
       }
     })
-
+  // io.debug(fr.v1.numerator)
+  // io.debug(fr.v1.denominator)
   case fr {
     InternalFraction(v0: Fraction(-1, -1), ..) ->
       Error(ConversionError("Too many iterations"))
-    _ ->
-      reduce(Fraction(
+    _ -> {
+      Fraction(
         sign * { fr.v0.numerator + whole * fr.v0.denominator },
         fr.v0.denominator,
-      ))
+      )
+      // |> io.debug
+      |> reduce
+    }
   }
 }
 
@@ -594,8 +623,8 @@ fn internal_calc(value: Float, fr: InternalFraction) -> InternalFraction {
   let y2 = fr.x1 -. int.to_float(a2) *. fr.y1
   let fr2 =
     Fraction(
-      mult_32(fr.a1, fr.v1.numerator) + fr.v0.numerator,
-      mult_32(fr.a1, fr.v1.denominator) + fr.v0.denominator,
+      fr.a1 * fr.v1.numerator + fr.v0.numerator,
+      fr.a1 * fr.v1.denominator + fr.v0.denominator,
     )
   let fraction = int.to_float(fr2.numerator) /. int.to_float(fr2.denominator)
   let delta2 = float.absolute_value(value -. fraction)
@@ -608,14 +637,4 @@ fn internal_calc(value: Float, fr: InternalFraction) -> InternalFraction {
     delta1: fr.delta2,
     delta2: delta2,
   )
-}
-
-fn mult_32(x1: Int, x2: Int) -> Int {
-  let x3 = x1 * x2
-  let x4 = int.bitwise_and(x3, max_int_value)
-  x4
-  - case int.bitwise_and(x3, max_int_value + 1) {
-    0 -> 0
-    _ -> max_int_value + 1
-  }
 }
