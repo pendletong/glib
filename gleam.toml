@@ -1,5 +1,5 @@
 name = "glib"
-version = "1.0.0"
+version = "1.0.1"
 description = "A collection of Gleam utilities all written in pure gleam"
 licences = ["Apache-2.0"]
 repository = { type = "github", user = "pendletong", repo = "glib" }
